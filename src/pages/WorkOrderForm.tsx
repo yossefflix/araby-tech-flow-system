@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
-import { Upload, Camera, FileText, ArrowDown, CheckCircle, Save } from "lucide-react";
+import { Upload, Camera, FileText, ArrowDown, CheckCircle, Save, X } from "lucide-react";
 
 interface WorkOrder {
   id: string;
@@ -19,6 +19,7 @@ interface WorkOrder {
   propertyNumber?: string;
   sapNumber?: string;
   bookingDate?: string;
+  acType?: string;
 }
 
 const WorkOrderForm = () => {
@@ -53,6 +54,13 @@ const WorkOrderForm = () => {
       const currentOrder = orders.find((order: WorkOrder) => order.id === id);
       if (currentOrder) {
         setWorkOrder(currentOrder);
+        // Pre-fill AC type if it exists in the work order
+        if (currentOrder.acType) {
+          setFormData(prev => ({
+            ...prev,
+            acType: currentOrder.acType
+          }));
+        }
       }
 
       // Load saved form data if exists
@@ -76,7 +84,19 @@ const WorkOrderForm = () => {
         ...prev,
         [type]: [...prev[type], ...fileArray]
       }));
+      
+      toast({
+        title: "تم رفع الملفات",
+        description: `تم رفع ${fileArray.length} ${type === 'photos' ? 'صورة' : 'فيديو'} بنجاح`,
+      });
     }
+  };
+
+  const removeFile = (type: 'photos' | 'videos', index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      [type]: prev[type].filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = () => {
@@ -97,10 +117,11 @@ const WorkOrderForm = () => {
   };
 
   const handleSubmit = () => {
-    if (!formData.equipmentModel1 || !formData.workDescription || !formData.acType) {
+    // Only check for essential fields
+    if (!formData.workDescription.trim()) {
       toast({
         title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
+        description: "يرجى كتابة وصف العمل المنجز",
         variant: "destructive"
       });
       return;
@@ -204,11 +225,11 @@ const WorkOrderForm = () => {
           <Card>
             <CardHeader>
               <CardTitle>تفاصيل الأجهزة</CardTitle>
-              <CardDescription>معلومات الأجهزة المطلوب صيانتها</CardDescription>
+              <CardDescription>معلومات الأجهزة المطلوب صيانتها (اختيارية)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="acType">نوع التكييف *</Label>
+                <Label htmlFor="acType">نوع التكييف</Label>
                 <Select onValueChange={(value) => setFormData({...formData, acType: value})} value={formData.acType}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر نوع التكييف" />
@@ -222,7 +243,7 @@ const WorkOrderForm = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="equipmentModel1">الموديل الأول *</Label>
+                  <Label htmlFor="equipmentModel1">الموديل الأول</Label>
                   <Input
                     id="equipmentModel1"
                     value={formData.equipmentModel1}
@@ -231,7 +252,7 @@ const WorkOrderForm = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="equipmentSerial1">الرقم المسلسل الأول *</Label>
+                  <Label htmlFor="equipmentSerial1">الرقم المسلسل الأول</Label>
                   <Input
                     id="equipmentSerial1"
                     value={formData.equipmentSerial1}
@@ -263,7 +284,7 @@ const WorkOrderForm = () => {
               </div>
               
               <div>
-                <Label htmlFor="warrantyStatus">حالة الضمان *</Label>
+                <Label htmlFor="warrantyStatus">حالة الضمان</Label>
                 <Select onValueChange={(value) => setFormData({...formData, warrantyStatus: value})} value={formData.warrantyStatus}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر حالة الضمان" />
@@ -324,7 +345,7 @@ const WorkOrderForm = () => {
           <Card>
             <CardHeader>
               <CardTitle>الصور والفيديوهات</CardTitle>
-              <CardDescription>ارفع صور وفيديوهات من موقع العمل</CardDescription>
+              <CardDescription>ارفع صور وفيديوهات من موقع العمل (اختيارية)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -347,12 +368,33 @@ const WorkOrderForm = () => {
                     <Upload className="h-4 w-4 ml-2" />
                     اختر الصور
                   </Button>
-                  {formData.photos.length > 0 && (
-                    <p className="text-sm text-green-600 mt-2">
-                      تم رفع {formData.photos.length} صورة
-                    </p>
-                  )}
                 </div>
+                
+                {/* Display uploaded photos */}
+                {formData.photos.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">الصور المرفوعة ({formData.photos.length}):</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {formData.photos.map((photo, index) => (
+                        <div key={index} className="relative bg-gray-100 rounded-lg p-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 truncate">
+                              {photo.name}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile('photos', index)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div>
@@ -375,12 +417,33 @@ const WorkOrderForm = () => {
                     <Upload className="h-4 w-4 ml-2" />
                     اختر الفيديوهات
                   </Button>
-                  {formData.videos.length > 0 && (
-                    <p className="text-sm text-green-600 mt-2">
-                      تم رفع {formData.videos.length} فيديو
-                    </p>
-                  )}
                 </div>
+                
+                {/* Display uploaded videos */}
+                {formData.videos.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">الفيديوهات المرفوعة ({formData.videos.length}):</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {formData.videos.map((video, index) => (
+                        <div key={index} className="relative bg-gray-100 rounded-lg p-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 truncate">
+                              {video.name}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile('videos', index)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
