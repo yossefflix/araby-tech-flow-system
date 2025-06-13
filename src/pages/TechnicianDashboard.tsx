@@ -1,52 +1,46 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { ClipboardList, User, CheckCircle, Clock, ArrowDown } from "lucide-react";
+import { localDB } from "@/utils/localDatabase";
 
-interface Assignment {
+interface WorkOrder {
   id: string;
   customerName: string;
   address: string;
-  phone: string;
-  deviceType: string;
-  issueDescription: string;
-  status: 'assigned' | 'in-progress' | 'completed';
-  priority: 'high' | 'medium' | 'low';
-  assignedDate: string;
+  propertyNumber: string;
+  customerComplaint: string;
+  bookingDate: string;
+  assignedTechnician: string;
+  status: string;
+  createdAt: string;
+  phone?: string;
+  sapNumber?: string;
 }
 
 const TechnicianDashboard = () => {
-  const [assignments] = useState<Assignment[]>([
-    {
-      id: 'CAS202506024421001',
-      customerName: 'محمد قاسم',
-      address: 'المدينة البريطانية، طريق برنهام هيلز',
-      phone: '729337925',
-      deviceType: 'تكييف خارج الضمان',
-      issueDescription: 'تكييف لا يبرد بشكل جيد',
-      status: 'assigned',
-      priority: 'high',
-      assignedDate: '10/06/2025'
-    },
-    {
-      id: 'CAS202506024421002',
-      customerName: 'فاطمة أحمد',
-      address: 'المعادي، شارع 9',
-      phone: '729337984',
-      deviceType: 'ثلاجة',
-      issueDescription: 'الثلاجة لا تعمل',
-      status: 'in-progress',
-      priority: 'medium',
-      assignedDate: '09/06/2025'
-    }
-  ]);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Get current logged-in user
+    const user = localDB.getCurrentUser();
+    setCurrentUser(user);
+
+    // Get work orders assigned to this technician
+    const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+    const technicianOrders = orders.filter((order: WorkOrder) => 
+      order.assignedTechnician === user?.name
+    );
+    setWorkOrders(technicianOrders);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'pending': return 'bg-blue-100 text-blue-800';
       case 'in-progress': return 'bg-orange-100 text-orange-800';
       case 'completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -55,29 +49,25 @@ const TechnicianDashboard = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'assigned': return 'مُخصص';
+      case 'pending': return 'مُخصص';
       case 'in-progress': return 'قيد التنفيذ';
       case 'completed': return 'مكتمل';
       default: return status;
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'عالية';
-      case 'medium': return 'متوسطة';
-      case 'low': return 'منخفضة';
-      default: return priority;
-    }
+  const updateOrderStatus = (orderId: string, newStatus: string) => {
+    const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+    const updatedOrders = orders.map((order: WorkOrder) => 
+      order.id === orderId ? { ...order, status: newStatus } : order
+    );
+    localStorage.setItem('workOrders', JSON.stringify(updatedOrders));
+    
+    // Update local state
+    const technicianOrders = updatedOrders.filter((order: WorkOrder) => 
+      order.assignedTechnician === currentUser?.name
+    );
+    setWorkOrders(technicianOrders);
   };
 
   return (
@@ -92,7 +82,9 @@ const TechnicianDashboard = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-elaraby-blue">لوحة تحكم الفني</h1>
-                <p className="text-gray-600">أحمد محمود - مهندس صيانة</p>
+                <p className="text-gray-600">
+                  {currentUser ? `${currentUser.name} - فني صيانة` : 'فني صيانة'}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -119,7 +111,7 @@ const TechnicianDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">المهام المخصصة</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {assignments.filter(a => a.status === 'assigned').length}
+                    {workOrders.filter(o => o.status === 'pending').length}
                   </p>
                 </div>
                 <ClipboardList className="h-8 w-8 text-blue-600" />
@@ -133,7 +125,7 @@ const TechnicianDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">قيد التنفيذ</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {assignments.filter(a => a.status === 'in-progress').length}
+                    {workOrders.filter(o => o.status === 'in-progress').length}
                   </p>
                 </div>
                 <Clock className="h-8 w-8 text-orange-600" />
@@ -147,7 +139,7 @@ const TechnicianDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">مكتملة</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {assignments.filter(a => a.status === 'completed').length}
+                    {workOrders.filter(o => o.status === 'completed').length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
@@ -156,7 +148,7 @@ const TechnicianDashboard = () => {
           </Card>
         </div>
 
-        {/* Assignments */}
+        {/* Work Orders */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -169,59 +161,78 @@ const TechnicianDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              {assignments.map((assignment) => (
-                <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold text-elaraby-blue">#{assignment.id}</h4>
-                        <p className="text-lg font-medium">{assignment.customerName}</p>
+              {workOrders.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>لا توجد مهام مخصصة لك حالياً</p>
+                </div>
+              ) : (
+                workOrders.map((order) => (
+                  <Card key={order.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
+                          <p className="text-lg font-medium">{order.customerName}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge className={getStatusColor(order.status)}>
+                            {getStatusText(order.status)}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge className={getPriorityColor(assignment.priority)}>
-                          أولوية {getPriorityText(assignment.priority)}
-                        </Badge>
-                        <Badge className={getStatusColor(assignment.status)}>
-                          {getStatusText(assignment.status)}
-                        </Badge>
+                      
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2 text-sm">
+                          {order.phone && <p><strong>الهاتف:</strong> {order.phone}</p>}
+                          <p><strong>العنوان:</strong> {order.address}</p>
+                          {order.propertyNumber && <p><strong>رقم العقار:</strong> {order.propertyNumber}</p>}
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          {order.sapNumber && <p><strong>رقم SAP:</strong> {order.sapNumber}</p>}
+                          {order.bookingDate && <p><strong>تاريخ الحجز:</strong> {new Date(order.bookingDate).toLocaleDateString('ar-EG')}</p>}
+                          <p><strong>تاريخ الإنشاء:</strong> {new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="grid md:grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2 text-sm">
-                        <p><strong>الهاتف:</strong> {assignment.phone}</p>
-                        <p><strong>العنوان:</strong> {assignment.address}</p>
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <p><strong>نوع الجهاز:</strong> {assignment.deviceType}</p>
-                        <p><strong>تاريخ التخصيص:</strong> {assignment.assignedDate}</p>
-                      </div>
-                    </div>
-                    
-                    {assignment.issueDescription && (
-                      <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-700 mb-1">وصف المشكلة:</p>
-                        <p className="text-sm bg-gray-100 p-3 rounded">
-                          {assignment.issueDescription}
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-2">
-                      <Link to={`/work-order/${assignment.id}`}>
-                        <Button size="sm" className="bg-elaraby-blue hover:bg-elaraby-blue/90">
-                          فتح نموذج العمل
-                        </Button>
-                      </Link>
-                      {assignment.status === 'assigned' && (
-                        <Button size="sm" variant="outline">
-                          بدء العمل
-                        </Button>
+                      
+                      {order.customerComplaint && (
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-gray-700 mb-1">شكوى العميل:</p>
+                          <p className="text-sm bg-gray-100 p-3 rounded">
+                            {order.customerComplaint}
+                          </p>
+                        </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      
+                      <div className="flex gap-2">
+                        <Link to={`/work-order/${order.id}`}>
+                          <Button size="sm" className="bg-elaraby-blue hover:bg-elaraby-blue/90">
+                            فتح نموذج العمل
+                          </Button>
+                        </Link>
+                        {order.status === 'pending' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => updateOrderStatus(order.id, 'in-progress')}
+                          >
+                            بدء العمل
+                          </Button>
+                        )}
+                        {order.status === 'in-progress' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => updateOrderStatus(order.id, 'completed')}
+                          >
+                            إكمال المهمة
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

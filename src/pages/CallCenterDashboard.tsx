@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,51 +7,58 @@ import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus } from "lucide-react";
 
-interface CompletedOrder {
+interface WorkOrder {
   id: string;
   customerName: string;
   address: string;
-  phone: string;
-  technician: string;
-  equipmentModel1: string;
-  equipmentSerial1: string;
-  equipmentModel2?: string;
-  equipmentSerial2?: string;
-  warrantyStatus: string;
-  workDescription: string;
-  partsUsed?: string;
-  recommendations?: string;
-  photos: number;
-  videos: number;
-  completedDate: string;
-  status: 'pending-review' | 'approved' | 'uploaded';
+  propertyNumber: string;
+  customerComplaint: string;
+  bookingDate: string;
+  assignedTechnician: string;
+  status: string;
+  createdAt: string;
+  createdBy: string;
+  sapNumber?: string;
+  callCenterNotes?: string;
 }
 
 const CallCenterDashboard = () => {
-  const [orders] = useState<CompletedOrder[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<CompletedOrder | null>(null);
+  const [orders, setOrders] = useState<WorkOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    // Get work orders from localStorage
+    const workOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+    setOrders(workOrders);
+  }, []);
+
+  const filteredOrders = orders.filter(order =>
+    order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending-review': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-blue-100 text-blue-800';
-      case 'uploaded': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'in-progress': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending-review': return 'في انتظار المراجعة';
-      case 'approved': return 'تم الموافقة';
-      case 'uploaded': return 'تم الرفع';
+      case 'pending': return 'في انتظار التنفيذ';
+      case 'in-progress': return 'قيد التنفيذ';
+      case 'completed': return 'مكتمل';
       default: return status;
     }
   };
 
-  const handleUploadToElaraby = (order: CompletedOrder) => {
-    console.log('Uploading to ELARABY website:', order);
-    alert('تم رفع البيانات إلى موقع العربي بنجاح');
+  const handleRefresh = () => {
+    const workOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+    setOrders(workOrders);
   };
 
   return (
@@ -66,10 +73,13 @@ const CallCenterDashboard = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-elaraby-blue">الكول سنتر</h1>
-                <p className="text-gray-600">مراجعة ورفع البيانات</p>
+                <p className="text-gray-600">مراجعة ومتابعة الطلبات</p>
               </div>
             </div>
             <div className="flex gap-2">
+              <Button onClick={handleRefresh} variant="outline">
+                تحديث
+              </Button>
               <Link to="/call-center-work-order">
                 <Button className="bg-green-600 hover:bg-green-700">
                   <Plus className="h-4 w-4 ml-2" />
@@ -94,9 +104,9 @@ const CallCenterDashboard = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">في انتظار المراجعة</p>
+                  <p className="text-sm text-gray-600">في انتظار التنفيذ</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    {orders.filter(o => o.status === 'pending-review').length}
+                    {orders.filter(o => o.status === 'pending').length}
                   </p>
                 </div>
                 <Eye className="h-8 w-8 text-yellow-600" />
@@ -108,9 +118,9 @@ const CallCenterDashboard = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">تم الموافقة</p>
+                  <p className="text-sm text-gray-600">قيد التنفيذ</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {orders.filter(o => o.status === 'approved').length}
+                    {orders.filter(o => o.status === 'in-progress').length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-blue-600" />
@@ -122,9 +132,9 @@ const CallCenterDashboard = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">تم الرفع</p>
+                  <p className="text-sm text-gray-600">مكتملة</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {orders.filter(o => o.status === 'uploaded').length}
+                    {orders.filter(o => o.status === 'completed').length}
                   </p>
                 </div>
                 <Upload className="h-8 w-8 text-green-600" />
@@ -140,10 +150,15 @@ const CallCenterDashboard = () => {
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5" />
-                  التقارير المكتملة
+                  طلبات الصيانة
                 </span>
                 <div className="flex items-center gap-2">
-                  <Input placeholder="بحث..." className="w-40" />
+                  <Input 
+                    placeholder="بحث..." 
+                    className="w-40" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                   <Button size="sm" variant="outline">
                     <Search className="h-4 w-4" />
                   </Button>
@@ -152,13 +167,13 @@ const CallCenterDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {orders.length === 0 ? (
+                {filteredOrders.length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>لا توجد تقارير مكتملة حالياً</p>
+                    <p>لا توجد طلبات حالياً</p>
                   </div>
                 ) : (
-                  orders.map((order) => (
+                  filteredOrders.map((order) => (
                     <div 
                       key={order.id} 
                       className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -175,10 +190,9 @@ const CallCenterDashboard = () => {
                       </div>
                       
                       <div className="text-sm text-gray-600 space-y-1">
-                        <p>📱 {order.phone}</p>
-                        <p>👨‍🔧 {order.technician}</p>
-                        <p>📅 {order.completedDate}</p>
-                        <p>📸 {order.photos} صور، 🎥 {order.videos} فيديو</p>
+                        <p>👨‍🔧 {order.assignedTechnician}</p>
+                        <p>📅 {new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
+                        <p>📝 {order.customerComplaint.substring(0, 50)}...</p>
                       </div>
                     </div>
                   ))
@@ -190,9 +204,9 @@ const CallCenterDashboard = () => {
           {/* Order Details */}
           <Card>
             <CardHeader>
-              <CardTitle>تفاصيل التقرير</CardTitle>
+              <CardTitle>تفاصيل الطلب</CardTitle>
               <CardDescription>
-                {selectedOrder ? `طلب رقم: #${selectedOrder.id}` : 'اختر تقريراً لعرض التفاصيل'}
+                {selectedOrder ? `طلب رقم: #${selectedOrder.id}` : 'اختر طلباً لعرض التفاصيل'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -203,24 +217,13 @@ const CallCenterDashboard = () => {
                     <h4 className="font-semibold mb-2">بيانات العميل</h4>
                     <div className="text-sm space-y-1">
                       <p><strong>الاسم:</strong> {selectedOrder.customerName}</p>
-                      <p><strong>الهاتف:</strong> {selectedOrder.phone}</p>
                       <p><strong>العنوان:</strong> {selectedOrder.address}</p>
-                    </div>
-                  </div>
-
-                  {/* Equipment Info */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold mb-2">بيانات الأجهزة</h4>
-                    <div className="text-sm space-y-1">
-                      <p><strong>الموديل 1:</strong> {selectedOrder.equipmentModel1}</p>
-                      <p><strong>المسلسل 1:</strong> {selectedOrder.equipmentSerial1}</p>
-                      {selectedOrder.equipmentModel2 && (
-                        <>
-                          <p><strong>الموديل 2:</strong> {selectedOrder.equipmentModel2}</p>
-                          <p><strong>المسلسل 2:</strong> {selectedOrder.equipmentSerial2}</p>
-                        </>
+                      {selectedOrder.propertyNumber && (
+                        <p><strong>رقم العقار:</strong> {selectedOrder.propertyNumber}</p>
                       )}
-                      <p><strong>حالة الضمان:</strong> {selectedOrder.warrantyStatus}</p>
+                      {selectedOrder.sapNumber && (
+                        <p><strong>رقم SAP:</strong> {selectedOrder.sapNumber}</p>
+                      )}
                     </div>
                   </div>
 
@@ -228,58 +231,42 @@ const CallCenterDashboard = () => {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-semibold mb-2">تفاصيل العمل</h4>
                     <div className="text-sm space-y-2">
-                      <p><strong>الفني:</strong> {selectedOrder.technician}</p>
-                      <p><strong>وصف العمل:</strong></p>
+                      <p><strong>الفني المكلف:</strong> {selectedOrder.assignedTechnician}</p>
+                      <p><strong>شكوى العميل:</strong></p>
                       <div className="bg-white p-2 rounded border">
-                        {selectedOrder.workDescription}
+                        {selectedOrder.customerComplaint}
                       </div>
-                      {selectedOrder.partsUsed && (
-                        <>
-                          <p><strong>القطع المستخدمة:</strong></p>
-                          <div className="bg-white p-2 rounded border">
-                            {selectedOrder.partsUsed}
-                          </div>
-                        </>
+                      {selectedOrder.bookingDate && (
+                        <p><strong>تاريخ الحجز:</strong> {new Date(selectedOrder.bookingDate).toLocaleDateString('ar-EG')}</p>
                       )}
-                      {selectedOrder.recommendations && (
+                      {selectedOrder.callCenterNotes && (
                         <>
-                          <p><strong>التوصيات:</strong></p>
+                          <p><strong>ملاحظات الكول سنتر:</strong></p>
                           <div className="bg-white p-2 rounded border">
-                            {selectedOrder.recommendations}
+                            {selectedOrder.callCenterNotes}
                           </div>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Media */}
+                  {/* Status */}
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold mb-2">الوسائط</h4>
-                    <div className="text-sm">
-                      <p>📸 {selectedOrder.photos} صورة</p>
-                      <p>🎥 {selectedOrder.videos} فيديو</p>
+                    <h4 className="font-semibold mb-2">حالة الطلب</h4>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(selectedOrder.status)}>
+                        {getStatusText(selectedOrder.status)}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        تم الإنشاء: {new Date(selectedOrder.createdAt).toLocaleDateString('ar-EG')}
+                      </span>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => handleUploadToElaraby(selectedOrder)}
-                      className="bg-elaraby-blue hover:bg-elaraby-blue/90"
-                    >
-                      <Upload className="h-4 w-4 ml-2" />
-                      رفع إلى موقع العربي
-                    </Button>
-                    <Button variant="outline">
-                      <Eye className="h-4 w-4 ml-2" />
-                      عرض الوسائط
-                    </Button>
                   </div>
                 </div>
               ) : (
                 <div className="text-center text-gray-500 py-8">
                   <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>اختر تقريراً من القائمة لعرض التفاصيل</p>
+                  <p>اختر طلباً من القائمة لعرض التفاصيل</p>
                 </div>
               )}
             </CardContent>
