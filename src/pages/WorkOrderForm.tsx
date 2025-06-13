@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,19 +8,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
-import { Upload, Camera, FileText, ArrowDown, CheckCircle } from "lucide-react";
+import { Upload, Camera, FileText, ArrowDown, CheckCircle, Save } from "lucide-react";
+
+interface WorkOrder {
+  id: string;
+  customerName: string;
+  address: string;
+  phone?: string;
+  customerComplaint: string;
+  propertyNumber?: string;
+  sapNumber?: string;
+  bookingDate?: string;
+}
 
 const WorkOrderForm = () => {
   const { id } = useParams();
   const { toast } = useToast();
+  const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   
   const [formData, setFormData] = useState({
-    // Customer Info (pre-filled from assignment)
-    customerName: 'محمد قاسم',
-    address: 'المدينة البريطانية، طريق برنهام هيلز',
-    phone: '729337925',
-    
     // Equipment Details
+    acType: '',
     equipmentModel1: '',
     equipmentSerial1: '',
     equipmentModel2: '',
@@ -38,6 +46,29 @@ const WorkOrderForm = () => {
     videos: [] as File[]
   });
 
+  useEffect(() => {
+    // Load work order data
+    if (id) {
+      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+      const currentOrder = orders.find((order: WorkOrder) => order.id === id);
+      if (currentOrder) {
+        setWorkOrder(currentOrder);
+      }
+
+      // Load saved form data if exists
+      const savedFormData = localStorage.getItem(`workOrderForm_${id}`);
+      if (savedFormData) {
+        const parsedData = JSON.parse(savedFormData);
+        setFormData(prev => ({
+          ...prev,
+          ...parsedData,
+          photos: [], // Reset file arrays as they can't be serialized
+          videos: []
+        }));
+      }
+    }
+  }, [id]);
+
   const handleFileUpload = (type: 'photos' | 'videos', files: FileList | null) => {
     if (files) {
       const fileArray = Array.from(files);
@@ -48,8 +79,25 @@ const WorkOrderForm = () => {
     }
   };
 
+  const handleSave = () => {
+    if (id) {
+      // Save form data to localStorage
+      const dataToSave = {
+        ...formData,
+        photos: [], // Don't save files
+        videos: []  // Don't save files
+      };
+      localStorage.setItem(`workOrderForm_${id}`, JSON.stringify(dataToSave));
+      
+      toast({
+        title: "تم حفظ البيانات",
+        description: "تم حفظ بيانات النموذج بنجاح",
+      });
+    }
+  };
+
   const handleSubmit = () => {
-    if (!formData.equipmentModel1 || !formData.workDescription) {
+    if (!formData.equipmentModel1 || !formData.workDescription || !formData.acType) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -58,11 +106,26 @@ const WorkOrderForm = () => {
       return;
     }
 
+    // Clear saved form data after successful submission
+    if (id) {
+      localStorage.removeItem(`workOrderForm_${id}`);
+    }
+
     toast({
       title: "تم إرسال التقرير بنجاح",
       description: "تم إرسال تقرير العمل إلى الكول سنتر",
     });
   };
+
+  if (!workOrder) {
+    return (
+      <div className="min-h-screen bg-elaraby-gray flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">جاري تحميل بيانات الطلب...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-elaraby-gray">
@@ -79,12 +142,18 @@ const WorkOrderForm = () => {
                 <p className="text-gray-600">طلب رقم: #{id}</p>
               </div>
             </div>
-            <Link to="/technician">
-              <Button variant="outline">
-                <ArrowDown className="h-4 w-4 ml-2" />
-                العودة لمهامي
+            <div className="flex gap-2">
+              <Button onClick={handleSave} variant="outline">
+                <Save className="h-4 w-4 ml-2" />
+                حفظ البيانات
               </Button>
-            </Link>
+              <Link to="/technician">
+                <Button variant="outline">
+                  <ArrowDown className="h-4 w-4 ml-2" />
+                  العودة لمهامي
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -100,16 +169,34 @@ const WorkOrderForm = () => {
             <CardContent className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label>اسم العميل</Label>
-                <Input value={formData.customerName} disabled className="bg-gray-50" />
+                <Input value={workOrder.customerName} disabled className="bg-gray-50" />
               </div>
               <div>
                 <Label>رقم الهاتف</Label>
-                <Input value={formData.phone} disabled className="bg-gray-50" />
+                <Input value={workOrder.phone || 'غير محدد'} disabled className="bg-gray-50" />
               </div>
               <div className="md:col-span-2">
                 <Label>العنوان</Label>
-                <Input value={formData.address} disabled className="bg-gray-50" />
+                <Input value={workOrder.address} disabled className="bg-gray-50" />
               </div>
+              {workOrder.propertyNumber && (
+                <div>
+                  <Label>رقم العقار</Label>
+                  <Input value={workOrder.propertyNumber} disabled className="bg-gray-50" />
+                </div>
+              )}
+              {workOrder.sapNumber && (
+                <div>
+                  <Label>رقم SAP</Label>
+                  <Input value={workOrder.sapNumber} disabled className="bg-gray-50" />
+                </div>
+              )}
+              {workOrder.customerComplaint && (
+                <div className="md:col-span-2">
+                  <Label>شكوى العميل</Label>
+                  <Textarea value={workOrder.customerComplaint} disabled className="bg-gray-50" rows={3} />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -120,6 +207,19 @@ const WorkOrderForm = () => {
               <CardDescription>معلومات الأجهزة المطلوب صيانتها</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="acType">نوع التكييف *</Label>
+                <Select onValueChange={(value) => setFormData({...formData, acType: value})} value={formData.acType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر نوع التكييف" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SHARP">SHARP</SelectItem>
+                    <SelectItem value="TORNADO">TORNADO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="equipmentModel1">الموديل الأول *</Label>
@@ -164,7 +264,7 @@ const WorkOrderForm = () => {
               
               <div>
                 <Label htmlFor="warrantyStatus">حالة الضمان *</Label>
-                <Select onValueChange={(value) => setFormData({...formData, warrantyStatus: value})}>
+                <Select onValueChange={(value) => setFormData({...formData, warrantyStatus: value})} value={formData.warrantyStatus}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر حالة الضمان" />
                   </SelectTrigger>
@@ -288,10 +388,16 @@ const WorkOrderForm = () => {
           {/* Submit */}
           <Card>
             <CardContent className="p-6">
-              <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700">
-                <CheckCircle className="h-5 w-5 ml-2" />
-                إرسال التقرير إلى الكول سنتر
-              </Button>
+              <div className="flex gap-4">
+                <Button onClick={handleSubmit} className="flex-1 bg-green-600 hover:bg-green-700">
+                  <CheckCircle className="h-5 w-5 ml-2" />
+                  إرسال التقرير إلى الكول سنتر
+                </Button>
+                <Button onClick={handleSave} variant="outline">
+                  <Save className="h-4 w-4 ml-2" />
+                  حفظ
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
