@@ -26,7 +26,7 @@ const CallCenterWorkOrder = () => {
   });
 
   // Get approved technicians
-  const technicians = localDB.getUsers().filter(user => 
+  const technicians = localDB.getRegistrationRequests().filter(user => 
     user.role === 'technician' && user.status === 'approved'
   );
 
