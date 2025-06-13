@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video, X, Maximize2 } from "lucide-react";
+import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video, X, Maximize2, Loader2 } from "lucide-react";
 
 interface WorkOrder {
   id: string;
@@ -116,12 +116,21 @@ const CallCenterDashboard = () => {
             src={media.data}
             alt={media.name}
             className="w-full h-full object-contain rounded-lg"
+            onError={(e) => {
+              console.error('خطأ في تحميل الصورة:', e);
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+            onLoad={() => console.log('تم تحميل الصورة بنجاح')}
           />
         ) : (
           <video
             src={media.data}
             controls
             className="w-full h-full object-contain rounded-lg"
+            onError={(e) => {
+              console.error('خطأ في تحميل الفيديو:', e);
+            }}
+            onLoadedData={() => console.log('تم تحميل الفيديو بنجاح')}
           >
             متصفحك لا يدعم تشغيل الفيديو
           </video>
@@ -133,6 +142,80 @@ const CallCenterDashboard = () => {
       </div>
     </div>
   );
+
+  const ImageWithLoader = ({ src, alt, className, onClick }: { src: string; alt: string; className: string; onClick?: () => void }) => {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    return (
+      <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded text-gray-500 text-xs">
+            فشل في التحميل
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          className={className}
+          onClick={onClick}
+          onLoad={() => {
+            setLoading(false);
+            console.log('تم تحميل الصورة:', alt);
+          }}
+          onError={(e) => {
+            setLoading(false);
+            setError(true);
+            console.error('خطأ في تحميل الصورة:', alt, e);
+          }}
+          style={{ display: error ? 'none' : 'block' }}
+        />
+      </div>
+    );
+  };
+
+  const VideoWithLoader = ({ src, className, onClick }: { src: string; className: string; onClick?: () => void }) => {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    return (
+      <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded text-gray-500 text-xs">
+            فشل في التحميل
+          </div>
+        )}
+        <video
+          src={src}
+          controls
+          className={className}
+          onClick={onClick}
+          onLoadedData={() => {
+            setLoading(false);
+            console.log('تم تحميل الفيديو بنجاح');
+          }}
+          onError={(e) => {
+            setLoading(false);
+            setError(true);
+            console.error('خطأ في تحميل الفيديو:', e);
+          }}
+          style={{ display: error ? 'none' : 'block' }}
+        >
+          متصفحك لا يدعم تشغيل الفيديو
+        </video>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-elaraby-gray">
@@ -489,11 +572,11 @@ const CallCenterDashboard = () => {
                               <div className="grid grid-cols-2 gap-3">
                                 {selectedReport.photos.map((photo, index) => (
                                   <div key={index} className="relative group">
-                                    <div className="bg-white p-2 rounded border hover:shadow-md transition-shadow cursor-pointer">
-                                      <img
+                                    <div className="bg-white p-2 rounded border hover:shadow-md transition-shadow">
+                                      <ImageWithLoader
                                         src={photo.data}
                                         alt={photo.name}
-                                        className="w-full h-32 object-cover rounded mb-2"
+                                        className="w-full h-32 object-cover rounded mb-2 cursor-pointer"
                                         onClick={() => setSelectedMedia({ type: 'image', data: photo.data, name: photo.name })}
                                       />
                                       <div className="flex items-center justify-between">
@@ -547,14 +630,11 @@ const CallCenterDashboard = () => {
                                         <Maximize2 className="h-4 w-4" />
                                       </Button>
                                     </div>
-                                    <video
+                                    <VideoWithLoader
                                       src={video.data}
-                                      controls
-                                      className="w-full h-48 object-contain rounded bg-gray-100"
+                                      className="w-full h-48 object-contain rounded bg-gray-100 cursor-pointer"
                                       onClick={() => setSelectedMedia({ type: 'video', data: video.data, name: video.name })}
-                                    >
-                                      متصفحك لا يدعم تشغيل الفيديو
-                                    </video>
+                                    />
                                   </div>
                                 ))}
                               </div>
