@@ -13,13 +13,14 @@ const Register = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
+    phone: '',
     role: '',
     password: '',
     confirmPassword: ''
   });
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.role || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.phone || !formData.role || !formData.password || !formData.confirmPassword) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -46,11 +47,22 @@ const Register = () => {
       return;
     }
 
+    // Basic phone number validation
+    if (formData.phone.length < 10) {
+      toast({
+        title: "خطأ",
+        description: "رقم الهاتف يجب أن يكون 10 أرقام على الأقل",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Save registration request to localStorage (in real app, this would be sent to backend)
     const registrationRequests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
     const newRequest = {
       id: Date.now().toString(),
       name: formData.name,
+      phone: formData.phone,
       role: formData.role,
       password: formData.password,
       status: 'pending',
@@ -67,6 +79,7 @@ const Register = () => {
 
     setFormData({
       name: '',
+      phone: '',
       role: '',
       password: '',
       confirmPassword: ''
@@ -112,6 +125,18 @@ const Register = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="أدخل اسمك الكامل"
+                className="text-right"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="phone">رقم الهاتف *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="أدخل رقم هاتفك"
                 className="text-right"
               />
             </div>

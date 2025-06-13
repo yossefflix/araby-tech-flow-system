@@ -12,22 +12,22 @@ const TechnicianLogin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({
-    username: '',
+    phone: '',
     password: ''
   });
 
   const handleLogin = () => {
-    if (!credentials.username || !credentials.password) {
+    if (!credentials.phone || !credentials.password) {
       toast({
         title: "خطأ",
-        description: "يرجى إدخال اسم المستخدم وكلمة المرور",
+        description: "يرجى إدخال رقم الهاتف وكلمة المرور",
         variant: "destructive"
       });
       return;
     }
 
-    // Simple authentication check
-    if (credentials.username === "fanni" && credentials.password === "123") {
+    // Simple authentication check - in real app, check against approved users database
+    if (credentials.phone === "01012345678" && credentials.password === "123") {
       toast({
         title: "تم تسجيل الدخول بنجاح",
         description: "مرحباً بك في نظام الفنيين",
@@ -36,7 +36,7 @@ const TechnicianLogin = () => {
     } else {
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+        description: "رقم الهاتف أو كلمة المرور غير صحيحة",
         variant: "destructive"
       });
     }
@@ -74,13 +74,13 @@ const TechnicianLogin = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="username">اسم المستخدم</Label>
+              <Label htmlFor="phone">رقم الهاتف</Label>
               <Input
-                id="username"
-                type="text"
-                value={credentials.username}
-                onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-                placeholder="أدخل اسم المستخدم"
+                id="phone"
+                type="tel"
+                value={credentials.phone}
+                onChange={(e) => setCredentials({...credentials, phone: e.target.value})}
+                placeholder="أدخل رقم هاتفك"
                 className="text-right"
               />
             </div>
@@ -104,8 +104,17 @@ const TechnicianLogin = () => {
             {/* Demo Credentials */}
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <h4 className="font-semibold text-elaraby-blue mb-2">بيانات تجريبية:</h4>
-              <p className="text-sm text-gray-600">اسم المستخدم: fanni</p>
+              <p className="text-sm text-gray-600">رقم الهاتف: 01012345678</p>
               <p className="text-sm text-gray-600">كلمة المرور: 123</p>
+            </div>
+
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600">
+                ليس لديك حساب؟{" "}
+                <Link to="/register" className="text-elaraby-blue hover:underline">
+                  تسجيل حساب جديد
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>
