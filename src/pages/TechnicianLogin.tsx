@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ArrowDown } from "lucide-react";
+import { localDB } from "@/utils/localDatabase";
 
 interface ApprovedUser {
   id: string;
@@ -35,50 +35,28 @@ const TechnicianLogin = () => {
       return;
     }
 
-    // Get approved users from localStorage
-    const approvedUsers = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
-    const registrationRequests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
+    // Authenticate user using local database
+    const authenticatedUser = localDB.authenticateUser(credentials.phone, credentials.password);
     
-    // Find user in approved users by phone
-    const approvedUser = approvedUsers.find((user: ApprovedUser) => user.phone === credentials.phone);
-    
-    if (approvedUser) {
-      // Find the original registration request to get the password
-      const originalRequest = registrationRequests.find((req: any) => 
-        req.id === approvedUser.id && req.status === 'approved'
-      );
+    if (authenticatedUser) {
+      // Set current user session
+      localDB.setCurrentUser(authenticatedUser);
       
-      if (originalRequest && originalRequest.password === credentials.password) {
-        toast({
-          title: "تم تسجيل الدخول بنجاح",
-          description: `مرحباً بك ${approvedUser.name}`,
-        });
-        
-        // Store current user info for the session
-        localStorage.setItem('currentUser', JSON.stringify({
-          id: approvedUser.id,
-          name: approvedUser.name,
-          phone: approvedUser.phone,
-          role: approvedUser.role
-        }));
-        
-        // Navigate based on role
-        if (approvedUser.role === 'admin') {
-          navigate("/admin");
-        } else {
-          navigate("/technician");
-        }
+      toast({
+        title: "تم تسجيل الدخول بنجاح",
+        description: `مرحباً بك ${authenticatedUser.name}`,
+      });
+      
+      // Navigate based on role
+      if (authenticatedUser.role === 'admin') {
+        navigate("/admin");
       } else {
-        toast({
-          title: "خطأ في تسجيل الدخول",
-          description: "كلمة المرور غير صحيحة",
-          variant: "destructive"
-        });
+        navigate("/technician");
       }
     } else {
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "رقم الهاتف غير مسجل أو غير مقبول في النظام",
+        description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
         variant: "destructive"
       });
     }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,18 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { UserPlus, ArrowDown } from "lucide-react";
+import { localDB } from "@/utils/localDatabase";
 
 const Register = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    role: '',
+    role: '' as 'technician' | 'admin' | '',
     password: '',
     confirmPassword: ''
   });
 
   const handleSubmit = () => {
+    // Validation
     if (!formData.name || !formData.phone || !formData.role || !formData.password || !formData.confirmPassword) {
       toast({
         title: "خطأ",
@@ -47,7 +48,6 @@ const Register = () => {
       return;
     }
 
-    // Basic phone number validation
     if (formData.phone.length < 10) {
       toast({
         title: "خطأ",
@@ -57,33 +57,45 @@ const Register = () => {
       return;
     }
 
-    // Save registration request to localStorage (in real app, this would be sent to backend)
-    const registrationRequests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
-    const newRequest = {
-      id: Date.now().toString(),
-      name: formData.name,
-      phone: formData.phone,
-      role: formData.role,
-      password: formData.password,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-    
-    registrationRequests.push(newRequest);
-    localStorage.setItem('registrationRequests', JSON.stringify(registrationRequests));
+    // Check if phone number is already registered
+    if (localDB.isPhoneRegistered(formData.phone)) {
+      toast({
+        title: "خطأ",
+        description: "رقم الهاتف مسجل مسبقاً في النظام",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    toast({
-      title: "تم إرسال الطلب بنجاح",
-      description: "تم إرسال طلب تسجيل الحساب للمراجعة. سيتم إشعارك عند الموافقة.",
-    });
+    // Add registration request using local database
+    try {
+      localDB.addRegistrationRequest({
+        name: formData.name,
+        phone: formData.phone,
+        role: formData.role,
+        password: formData.password
+      });
 
-    setFormData({
-      name: '',
-      phone: '',
-      role: '',
-      password: '',
-      confirmPassword: ''
-    });
+      toast({
+        title: "تم إرسال الطلب بنجاح",
+        description: "تم إرسال طلب تسجيل الحساب للمراجعة. سيتم إشعارك عند الموافقة.",
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        phone: '',
+        role: '' as 'technician' | 'admin' | '',
+        password: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -143,7 +155,7 @@ const Register = () => {
             
             <div>
               <Label htmlFor="role">الدور *</Label>
-              <Select onValueChange={(value) => setFormData({...formData, role: value})}>
+              <Select onValueChange={(value: 'technician' | 'admin') => setFormData({...formData, role: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="اختر دورك في النظام" />
                 </SelectTrigger>

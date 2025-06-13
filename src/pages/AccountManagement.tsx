@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,92 +13,82 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface RegistrationRequest {
-  id: string;
-  name: string;
-  role: string;
-  password: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-}
-
-interface ApprovedUser {
-  id: string;
-  name: string;
-  role: string;
-  approvedAt: string;
-}
+import { localDB, type User } from "@/utils/localDatabase";
 
 const AccountManagement = () => {
   const { toast } = useToast();
-  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
-  const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
+  const [registrationRequests, setRegistrationRequests] = useState<User[]>([]);
+  const [approvedUsers, setApprovedUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Load data from localStorage
-    const requests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
-    const users = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
-    setRegistrationRequests(requests);
-    setApprovedUsers(users);
+    loadData();
   }, []);
 
+  const loadData = () => {
+    setRegistrationRequests(localDB.getRegistrationRequests());
+    setApprovedUsers(localDB.getApprovedUsers());
+  };
+
   const handleApprove = (requestId: string) => {
-    const updatedRequests = registrationRequests.map(req => 
-      req.id === requestId ? { ...req, status: 'approved' as const } : req
-    );
+    const success = localDB.updateUserStatus(requestId, 'approved');
     
-    const approvedRequest = registrationRequests.find(req => req.id === requestId);
-    if (approvedRequest) {
-      const newUser: ApprovedUser = {
-        id: approvedRequest.id,
-        name: approvedRequest.name,
-        role: approvedRequest.role,
-        approvedAt: new Date().toISOString()
-      };
-      
-      const updatedUsers = [...approvedUsers, newUser];
-      
-      setRegistrationRequests(updatedRequests);
-      setApprovedUsers(updatedUsers);
-      
-      localStorage.setItem('registrationRequests', JSON.stringify(updatedRequests));
-      localStorage.setItem('approvedUsers', JSON.stringify(updatedUsers));
+    if (success) {
+      const user = registrationRequests.find(req => req.id === requestId);
+      loadData(); // Refresh data
       
       toast({
         title: "تم قبول الطلب",
-        description: `تم قبول طلب ${approvedRequest.name} بنجاح`,
+        description: `تم قبول طلب ${user?.name} بنجاح`,
+      });
+    } else {
+      toast({
+        title: "خطأ",
+        description: "فشل في قبول الطلب",
+        variant: "destructive"
       });
     }
   };
 
   const handleReject = (requestId: string) => {
-    const updatedRequests = registrationRequests.map(req => 
-      req.id === requestId ? { ...req, status: 'rejected' as const } : req
-    );
+    const user = registrationRequests.find(req => req.id === requestId);
+    const success = localDB.updateUserStatus(requestId, 'rejected');
     
-    setRegistrationRequests(updatedRequests);
-    localStorage.setItem('registrationRequests', JSON.stringify(updatedRequests));
-    
-    const rejectedRequest = registrationRequests.find(req => req.id === requestId);
-    toast({
-      title: "تم رفض الطلب",
-      description: `تم رفض طلب ${rejectedRequest?.name} بنجاح`,
-      variant: "destructive"
-    });
+    if (success) {
+      loadData(); // Refresh data
+      
+      toast({
+        title: "تم رفض الطلب",
+        description: `تم رفض طلب ${user?.name} بنجاح`,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "خطأ",
+        description: "فشل في رفض الطلب",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteUser = (userId: string) => {
-    const updatedUsers = approvedUsers.filter(user => user.id !== userId);
-    setApprovedUsers(updatedUsers);
-    localStorage.setItem('approvedUsers', JSON.stringify(updatedUsers));
+    const user = approvedUsers.find(u => u.id === userId);
+    const success = localDB.deleteUser(userId);
     
-    const deletedUser = approvedUsers.find(user => user.id === userId);
-    toast({
-      title: "تم حذف المستخدم",
-      description: `تم حذف ${deletedUser?.name} من النظام`,
-      variant: "destructive"
-    });
+    if (success) {
+      loadData(); // Refresh data
+      
+      toast({
+        title: "تم حذف المستخدم",
+        description: `تم حذف ${user?.name} من النظام`,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف المستخدم",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -208,6 +197,7 @@ const AccountManagement = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>الاسم</TableHead>
+                      <TableHead>الهاتف</TableHead>
                       <TableHead>الدور</TableHead>
                       <TableHead>الإجراءات</TableHead>
                     </TableRow>
@@ -216,6 +206,7 @@ const AccountManagement = () => {
                     {pendingRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.name}</TableCell>
+                        <TableCell>{request.phone}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{getRoleText(request.role)}</Badge>
                         </TableCell>
@@ -263,6 +254,7 @@ const AccountManagement = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>الاسم</TableHead>
+                      <TableHead>الهاتف</TableHead>
                       <TableHead>الدور</TableHead>
                       <TableHead>الإجراءات</TableHead>
                     </TableRow>
@@ -271,6 +263,7 @@ const AccountManagement = () => {
                     {approvedUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.phone}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{getRoleText(user.role)}</Badge>
                         </TableCell>
@@ -309,6 +302,7 @@ const AccountManagement = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>الاسم</TableHead>
+                    <TableHead>الهاتف</TableHead>
                     <TableHead>الدور</TableHead>
                     <TableHead>الحالة</TableHead>
                     <TableHead>تاريخ الطلب</TableHead>
@@ -318,6 +312,7 @@ const AccountManagement = () => {
                   {registrationRequests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell className="font-medium">{request.name}</TableCell>
+                      <TableCell>{request.phone}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{getRoleText(request.role)}</Badge>
                       </TableCell>
