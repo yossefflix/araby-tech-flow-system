@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +19,33 @@ interface WorkOrder {
   sapNumber?: string;
   bookingDate?: string;
   acType?: string;
+  assignedTechnician?: string;
+  status: string;
+}
+
+interface WorkReport {
+  orderId: string;
+  // Equipment Details
+  acType: string;
+  equipmentModel1: string;
+  equipmentSerial1: string;
+  equipmentModel2: string;
+  equipmentSerial2: string;
+  warrantyStatus: string;
+  
+  // Work Details
+  workDescription: string;
+  partsUsed: string;
+  recommendations: string;
+  customerSignature: string;
+  
+  // Media uploads - storing as file names/descriptions since we can't store actual files
+  photos: { name: string; size: number }[];
+  videos: { name: string; size: number }[];
+  
+  // Metadata
+  submittedAt: string;
+  technicianName: string;
 }
 
 const WorkOrderForm = () => {
@@ -127,8 +153,48 @@ const WorkOrderForm = () => {
       return;
     }
 
-    // Clear saved form data after successful submission
-    if (id) {
+    if (id && workOrder) {
+      // Create work report
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const workReport: WorkReport = {
+        orderId: id,
+        acType: formData.acType,
+        equipmentModel1: formData.equipmentModel1,
+        equipmentSerial1: formData.equipmentSerial1,
+        equipmentModel2: formData.equipmentModel2,
+        equipmentSerial2: formData.equipmentSerial2,
+        warrantyStatus: formData.warrantyStatus,
+        workDescription: formData.workDescription,
+        partsUsed: formData.partsUsed,
+        recommendations: formData.recommendations,
+        customerSignature: formData.customerSignature,
+        photos: formData.photos.map(file => ({ name: file.name, size: file.size })),
+        videos: formData.videos.map(file => ({ name: file.name, size: file.size })),
+        submittedAt: new Date().toISOString(),
+        technicianName: currentUser.name || 'فني غير محدد'
+      };
+
+      // Save work report
+      const existingReports = JSON.parse(localStorage.getItem('workReports') || '[]');
+      const reportIndex = existingReports.findIndex((report: WorkReport) => report.orderId === id);
+      
+      if (reportIndex >= 0) {
+        existingReports[reportIndex] = workReport;
+      } else {
+        existingReports.push(workReport);
+      }
+      
+      localStorage.setItem('workReports', JSON.stringify(existingReports));
+
+      // Update work order status to completed
+      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+      const orderIndex = orders.findIndex((order: WorkOrder) => order.id === id);
+      if (orderIndex >= 0) {
+        orders[orderIndex].status = 'completed';
+        localStorage.setItem('workOrders', JSON.stringify(orders));
+      }
+
+      // Clear saved form data after successful submission
       localStorage.removeItem(`workOrderForm_${id}`);
     }
 

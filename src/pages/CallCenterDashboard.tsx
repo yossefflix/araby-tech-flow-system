@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus } from "lucide-react";
+import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video } from "lucide-react";
 
 interface WorkOrder {
   id: string;
@@ -22,21 +22,54 @@ interface WorkOrder {
   callCenterNotes?: string;
 }
 
+interface WorkReport {
+  orderId: string;
+  acType: string;
+  equipmentModel1: string;
+  equipmentSerial1: string;
+  equipmentModel2: string;
+  equipmentSerial2: string;
+  warrantyStatus: string;
+  workDescription: string;
+  partsUsed: string;
+  recommendations: string;
+  customerSignature: string;
+  photos: { name: string; size: number }[];
+  videos: { name: string; size: number }[];
+  submittedAt: string;
+  technicianName: string;
+}
+
 const CallCenterDashboard = () => {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
+  const [workReports, setWorkReports] = useState<WorkReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<WorkReport | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'orders' | 'reports'>('orders');
 
   useEffect(() => {
     // Get work orders from localStorage
     const workOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
     setOrders(workOrders);
+    
+    // Get work reports from localStorage
+    const reports = JSON.parse(localStorage.getItem('workReports') || '[]');
+    setWorkReports(reports);
   }, []);
 
   const filteredOrders = orders.filter(order =>
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredReports = workReports.filter(report => {
+    const order = orders.find(o => o.id === report.orderId);
+    return order && (
+      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.orderId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -59,6 +92,12 @@ const CallCenterDashboard = () => {
   const handleRefresh = () => {
     const workOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
     setOrders(workOrders);
+    const reports = JSON.parse(localStorage.getItem('workReports') || '[]');
+    setWorkReports(reports);
+  };
+
+  const getOrderForReport = (reportOrderId: string) => {
+    return orders.find(order => order.id === reportOrderId);
   };
 
   return (
@@ -73,7 +112,7 @@ const CallCenterDashboard = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-elaraby-blue">الكول سنتر</h1>
-                <p className="text-gray-600">مراجعة ومتابعة الطلبات</p>
+                <p className="text-gray-600">مراجعة ومتابعة الطلبات والتقارير</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -99,7 +138,7 @@ const CallCenterDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -141,16 +180,57 @@ const CallCenterDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">تقارير العمل</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {workReports.length}
+                  </p>
+                </div>
+                <FileText className="h-8 w-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6">
+          <div className="flex space-x-4 space-x-reverse">
+            <Button
+              variant={activeTab === 'orders' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('orders')}
+            >
+              طلبات الصيانة
+            </Button>
+            <Button
+              variant={activeTab === 'reports' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('reports')}
+            >
+              تقارير العمل المكتملة
+            </Button>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Orders List */}
+          {/* Orders/Reports List */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
-                  طلبات الصيانة
+                  {activeTab === 'orders' ? (
+                    <>
+                      <CheckCircle className="h-5 w-5" />
+                      طلبات الصيانة
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-5 w-5" />
+                      تقارير العمل المكتملة
+                    </>
+                  )}
                 </span>
                 <div className="flex items-center gap-2">
                   <Input 
@@ -167,46 +247,104 @@ const CallCenterDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {filteredOrders.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>لا توجد طلبات حالياً</p>
-                  </div>
-                ) : (
-                  filteredOrders.map((order) => (
-                    <div 
-                      key={order.id} 
-                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
-                          <p className="text-sm text-gray-600">{order.customerName}</p>
-                        </div>
-                        <Badge className={getStatusColor(order.status)}>
-                          {getStatusText(order.status)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>👨‍🔧 {order.assignedTechnician}</p>
-                        <p>📅 {new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
-                        <p>📝 {order.customerComplaint.substring(0, 50)}...</p>
-                      </div>
+                {activeTab === 'orders' ? (
+                  filteredOrders.length === 0 ? (
+                    <div className="text-center text-gray-500 py-8">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>لا توجد طلبات حالياً</p>
                     </div>
-                  ))
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <div 
+                        key={order.id} 
+                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setSelectedReport(null);
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
+                            <p className="text-sm text-gray-600">{order.customerName}</p>
+                          </div>
+                          <Badge className={getStatusColor(order.status)}>
+                            {getStatusText(order.status)}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <p>👨‍🔧 {order.assignedTechnician}</p>
+                          <p>📅 {new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
+                          <p>📝 {order.customerComplaint.substring(0, 50)}...</p>
+                        </div>
+                      </div>
+                    ))
+                  )
+                ) : (
+                  filteredReports.length === 0 ? (
+                    <div className="text-center text-gray-500 py-8">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>لا توجد تقارير عمل حالياً</p>
+                    </div>
+                  ) : (
+                    filteredReports.map((report) => {
+                      const order = getOrderForReport(report.orderId);
+                      return (
+                        <div 
+                          key={report.orderId} 
+                          className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedReport(report);
+                            setSelectedOrder(order || null);
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="font-semibold text-elaraby-blue">#{report.orderId}</h4>
+                              <p className="text-sm text-gray-600">{order?.customerName}</p>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800">
+                              تقرير مكتمل
+                            </Badge>
+                          </div>
+                          
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p>👨‍🔧 {report.technicianName}</p>
+                            <p>📅 {new Date(report.submittedAt).toLocaleDateString('ar-EG')}</p>
+                            <p>📝 {report.workDescription.substring(0, 50)}...</p>
+                            <div className="flex gap-2 mt-2">
+                              {report.photos.length > 0 && (
+                                <div className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  <Camera className="h-3 w-3" />
+                                  {report.photos.length} صورة
+                                </div>
+                              )}
+                              {report.videos.length > 0 && (
+                                <div className="flex items-center gap-1 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                  <Video className="h-3 w-3" />
+                                  {report.videos.length} فيديو
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Order Details */}
+          {/* Details Panel */}
           <Card>
             <CardHeader>
-              <CardTitle>تفاصيل الطلب</CardTitle>
+              <CardTitle>
+                {selectedReport ? 'تقرير العمل المكتمل' : 'تفاصيل الطلب'}
+              </CardTitle>
               <CardDescription>
-                {selectedOrder ? `طلب رقم: #${selectedOrder.id}` : 'اختر طلباً لعرض التفاصيل'}
+                {selectedOrder ? `طلب رقم: #${selectedOrder.id}` : 'اختر طلباً أو تقريراً لعرض التفاصيل'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -250,6 +388,101 @@ const CallCenterDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Work Report Details (if selected) */}
+                  {selectedReport && (
+                    <>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="font-semibold mb-2">تفاصيل الأجهزة</h4>
+                        <div className="text-sm space-y-1">
+                          {selectedReport.acType && <p><strong>نوع التكييف:</strong> {selectedReport.acType}</p>}
+                          {selectedReport.equipmentModel1 && <p><strong>الموديل الأول:</strong> {selectedReport.equipmentModel1}</p>}
+                          {selectedReport.equipmentSerial1 && <p><strong>الرقم المسلسل الأول:</strong> {selectedReport.equipmentSerial1}</p>}
+                          {selectedReport.equipmentModel2 && <p><strong>الموديل الثاني:</strong> {selectedReport.equipmentModel2}</p>}
+                          {selectedReport.equipmentSerial2 && <p><strong>الرقم المسلسل الثاني:</strong> {selectedReport.equipmentSerial2}</p>}
+                          {selectedReport.warrantyStatus && <p><strong>حالة الضمان:</strong> {selectedReport.warrantyStatus}</p>}
+                        </div>
+                      </div>
+
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h4 className="font-semibold mb-2">تقرير العمل المنجز</h4>
+                        <div className="text-sm space-y-2">
+                          <p><strong>الفني:</strong> {selectedReport.technicianName}</p>
+                          <p><strong>تاريخ الإرسال:</strong> {new Date(selectedReport.submittedAt).toLocaleString('ar-EG')}</p>
+                          
+                          <div>
+                            <p><strong>وصف العمل المنجز:</strong></p>
+                            <div className="bg-white p-2 rounded border mt-1">
+                              {selectedReport.workDescription}
+                            </div>
+                          </div>
+
+                          {selectedReport.partsUsed && (
+                            <div>
+                              <p><strong>القطع المستخدمة:</strong></p>
+                              <div className="bg-white p-2 rounded border mt-1">
+                                {selectedReport.partsUsed}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedReport.recommendations && (
+                            <div>
+                              <p><strong>التوصيات:</strong></p>
+                              <div className="bg-white p-2 rounded border mt-1">
+                                {selectedReport.recommendations}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Media Section */}
+                      {(selectedReport.photos.length > 0 || selectedReport.videos.length > 0) && (
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <h4 className="font-semibold mb-2">الصور والفيديوهات</h4>
+                          
+                          {selectedReport.photos.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-sm font-medium mb-2">الصور ({selectedReport.photos.length}):</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {selectedReport.photos.map((photo, index) => (
+                                  <div key={index} className="bg-white p-2 rounded border text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Camera className="h-3 w-3 text-blue-600" />
+                                      <span className="truncate">{photo.name}</span>
+                                    </div>
+                                    <p className="text-gray-500 mt-1">
+                                      {(photo.size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedReport.videos.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium mb-2">الفيديوهات ({selectedReport.videos.length}):</p>
+                              <div className="grid grid-cols-1 gap-2">
+                                {selectedReport.videos.map((video, index) => (
+                                  <div key={index} className="bg-white p-2 rounded border text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Video className="h-3 w-3 text-purple-600" />
+                                      <span className="truncate">{video.name}</span>
+                                    </div>
+                                    <p className="text-gray-500 mt-1">
+                                      {(video.size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   {/* Status */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-semibold mb-2">حالة الطلب</h4>
@@ -266,7 +499,7 @@ const CallCenterDashboard = () => {
               ) : (
                 <div className="text-center text-gray-500 py-8">
                   <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>اختر طلباً من القائمة لعرض التفاصيل</p>
+                  <p>اختر طلباً أو تقريراً من القائمة لعرض التفاصيل</p>
                 </div>
               )}
             </CardContent>
