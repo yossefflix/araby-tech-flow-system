@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    role: '' as 'technician' | 'admin' | '',
+    role: '' as 'technician' | 'admin' | 'call_center' | '',
     password: '',
     confirmPassword: ''
   });
@@ -85,7 +86,7 @@ const Register = () => {
       setFormData({
         name: '',
         phone: '',
-        role: '' as 'technician' | 'admin' | '',
+        role: '' as 'technician' | 'admin' | 'call_center' | '',
         password: '',
         confirmPassword: ''
       });
@@ -155,13 +156,14 @@ const Register = () => {
             
             <div>
               <Label htmlFor="role">الدور *</Label>
-              <Select onValueChange={(value: 'technician' | 'admin') => setFormData({...formData, role: value})}>
+              <Select onValueChange={(value: 'technician' | 'admin' | 'call_center') => setFormData({...formData, role: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="اختر دورك في النظام" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="technician">فني</SelectItem>
                   <SelectItem value="admin">مدير</SelectItem>
+                  <SelectItem value="call_center">كول سنتر</SelectItem>
                 </SelectContent>
               </Select>
             </div>

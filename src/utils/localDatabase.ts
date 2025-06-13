@@ -3,7 +3,7 @@ interface User {
   id: string;
   name: string;
   phone: string;
-  role: 'technician' | 'admin';
+  role: 'technician' | 'admin' | 'call_center';
   password: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
@@ -14,7 +14,7 @@ interface CurrentUser {
   id: string;
   name: string;
   phone: string;
-  role: 'technician' | 'admin';
+  role: 'technician' | 'admin' | 'call_center';
 }
 
 class LocalDatabase {

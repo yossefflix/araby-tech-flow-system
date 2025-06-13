@@ -110,7 +110,12 @@ const AccountManagement = () => {
   };
 
   const getRoleText = (role: string) => {
-    return role === 'technician' ? 'فني' : 'مدير';
+    switch (role) {
+      case 'technician': return 'فني';
+      case 'admin': return 'مدير';
+      case 'call_center': return 'كول سنتر';
+      default: return role;
+    }
   };
 
   const pendingRequests = registrationRequests.filter(req => req.status === 'pending');
