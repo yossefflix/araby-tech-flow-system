@@ -8,16 +8,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowDown, Plus, Search, User, ClipboardList, CheckCircle, Clock } from "lucide-react";
+import { ArrowDown, Plus, Search, User, ClipboardList, CheckCircle, Clock, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface WorkOrder {
   id: string;
+  orderNumber: string;
   customerName: string;
+  propertyNumber: string;
   address: string;
-  phone: string;
-  deviceType: string;
-  issueDescription: string;
+  customerComplaint: string;
+  bookingDate: string;
+  callCenterNotes: string;
+  sapNumber: string;
   technician: string;
   status: 'pending' | 'assigned' | 'in-progress' | 'completed';
   createdAt: string;
@@ -27,12 +30,15 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<WorkOrder[]>([
     {
-      id: 'CAS202506024421001',
+      id: '1',
+      orderNumber: 'CAS202506024421001',
       customerName: 'محمد قاسم',
+      propertyNumber: '12345',
       address: 'المدينة البريطانية، طريق برنهام هيلز',
-      phone: '729337925',
-      deviceType: 'تكييف خارج الضمان',
-      issueDescription: 'تكييف لا يبرد',
+      customerComplaint: 'تكييف لا يبرد',
+      bookingDate: '10/06/2025',
+      callCenterNotes: 'العميل متاح من 9 صباحاً حتى 5 مساءً',
+      sapNumber: 'SAP789123',
       technician: 'أحمد محمود',
       status: 'completed',
       createdAt: '10/06/2025'
@@ -40,28 +46,31 @@ const AdminDashboard = () => {
   ]);
 
   const [newOrder, setNewOrder] = useState({
+    orderNumber: '',
     customerName: '',
+    propertyNumber: '',
     address: '',
-    phone: '',
-    deviceType: '',
-    issueDescription: '',
+    customerComplaint: '',
+    bookingDate: '',
+    callCenterNotes: '',
+    sapNumber: '',
     technician: ''
   });
 
   const technicians = ['أحمد محمود', 'محمد علي', 'خالد حسن', 'عمر سعد'];
 
   const handleCreateOrder = () => {
-    if (!newOrder.customerName || !newOrder.address || !newOrder.phone) {
+    if (!newOrder.orderNumber || !newOrder.customerName || !newOrder.address) {
       toast({
         title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
+        description: "يرجى ملء الحقول المطلوبة (رقم الطلب، اسم العميل، العنوان)",
         variant: "destructive"
       });
       return;
     }
 
     const order: WorkOrder = {
-      id: `CAS${Date.now()}`,
+      id: Date.now().toString(),
       ...newOrder,
       status: 'assigned',
       createdAt: new Date().toLocaleDateString('ar-EG')
@@ -69,11 +78,14 @@ const AdminDashboard = () => {
 
     setOrders([order, ...orders]);
     setNewOrder({
+      orderNumber: '',
       customerName: '',
+      propertyNumber: '',
       address: '',
-      phone: '',
-      deviceType: '',
-      issueDescription: '',
+      customerComplaint: '',
+      bookingDate: '',
+      callCenterNotes: '',
+      sapNumber: '',
       technician: ''
     });
 
@@ -196,6 +208,15 @@ const AdminDashboard = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="orderNumber">رقم الطلب *</Label>
+                  <Input
+                    id="orderNumber"
+                    value={newOrder.orderNumber}
+                    onChange={(e) => setNewOrder({...newOrder, orderNumber: e.target.value})}
+                    placeholder="أدخل رقم الطلب"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="customerName">اسم العميل *</Label>
                   <Input
                     id="customerName"
@@ -204,13 +225,25 @@ const AdminDashboard = () => {
                     placeholder="أدخل اسم العميل"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="phone">رقم الهاتف *</Label>
+                  <Label htmlFor="propertyNumber">رقم العقار</Label>
                   <Input
-                    id="phone"
-                    value={newOrder.phone}
-                    onChange={(e) => setNewOrder({...newOrder, phone: e.target.value})}
-                    placeholder="أدخل رقم الهاتف"
+                    id="propertyNumber"
+                    value={newOrder.propertyNumber}
+                    onChange={(e) => setNewOrder({...newOrder, propertyNumber: e.target.value})}
+                    placeholder="أدخل رقم العقار"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sapNumber">رقم SAP</Label>
+                  <Input
+                    id="sapNumber"
+                    value={newOrder.sapNumber}
+                    onChange={(e) => setNewOrder({...newOrder, sapNumber: e.target.value})}
+                    placeholder="أدخل رقم SAP"
                   />
                 </div>
               </div>
@@ -226,28 +259,32 @@ const AdminDashboard = () => {
               </div>
               
               <div>
-                <Label htmlFor="deviceType">نوع الجهاز</Label>
-                <Select onValueChange={(value) => setNewOrder({...newOrder, deviceType: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر نوع الجهاز" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="تكييف داخل الضمان">تكييف داخل الضمان</SelectItem>
-                    <SelectItem value="تكييف خارج الضمان">تكييف خارج الضمان</SelectItem>
-                    <SelectItem value="ثلاجة">ثلاجة</SelectItem>
-                    <SelectItem value="غسالة">غسالة</SelectItem>
-                    <SelectItem value="أخرى">أخرى</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="customerComplaint">شكوى العميل</Label>
+                <Textarea
+                  id="customerComplaint"
+                  value={newOrder.customerComplaint}
+                  onChange={(e) => setNewOrder({...newOrder, customerComplaint: e.target.value})}
+                  placeholder="اكتب شكوى العميل"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bookingDate">تاريخ الحجز</Label>
+                <Input
+                  id="bookingDate"
+                  type="date"
+                  value={newOrder.bookingDate}
+                  onChange={(e) => setNewOrder({...newOrder, bookingDate: e.target.value})}
+                />
               </div>
               
               <div>
-                <Label htmlFor="issueDescription">وصف المشكلة</Label>
+                <Label htmlFor="callCenterNotes">ملاحظات الكول سنتر</Label>
                 <Textarea
-                  id="issueDescription"
-                  value={newOrder.issueDescription}
-                  onChange={(e) => setNewOrder({...newOrder, issueDescription: e.target.value})}
-                  placeholder="اكتب وصف المشكلة"
+                  id="callCenterNotes"
+                  value={newOrder.callCenterNotes}
+                  onChange={(e) => setNewOrder({...newOrder, callCenterNotes: e.target.value})}
+                  placeholder="اكتب ملاحظات الكول سنتر"
                 />
               </div>
               
@@ -293,7 +330,7 @@ const AdminDashboard = () => {
                   <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
+                        <h4 className="font-semibold text-elaraby-blue">#{order.orderNumber}</h4>
                         <p className="text-sm text-gray-600">{order.customerName}</p>
                       </div>
                       <Badge className={getStatusColor(order.status)}>
@@ -302,16 +339,17 @@ const AdminDashboard = () => {
                     </div>
                     
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p>📱 {order.phone}</p>
+                      <p>🏠 رقم العقار: {order.propertyNumber}</p>
                       <p>📍 {order.address}</p>
-                      <p>🔧 {order.deviceType}</p>
+                      <p>📝 الشكوى: {order.customerComplaint}</p>
+                      <p>📅 تاريخ الحجز: {order.bookingDate}</p>
+                      <p>💻 SAP: {order.sapNumber}</p>
                       <p>👨‍🔧 {order.technician}</p>
-                      <p>📅 {order.createdAt}</p>
                     </div>
                     
-                    {order.issueDescription && (
-                      <p className="text-sm bg-gray-100 p-2 rounded mt-2">
-                        {order.issueDescription}
+                    {order.callCenterNotes && (
+                      <p className="text-sm bg-blue-50 p-2 rounded mt-2">
+                        <strong>ملاحظات الكول سنتر:</strong> {order.callCenterNotes}
                       </p>
                     )}
                   </div>
