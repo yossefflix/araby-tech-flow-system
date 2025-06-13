@@ -28,22 +28,7 @@ interface WorkOrder {
 
 const CallCenterWorkOrder = () => {
   const { toast } = useToast();
-  const [orders, setOrders] = useState<WorkOrder[]>([
-    {
-      id: '1',
-      orderNumber: 'CAS202506024421001',
-      customerName: 'محمد قاسم',
-      propertyNumber: '12345',
-      address: 'المدينة البريطانية، طريق برنهام هيلز',
-      customerComplaint: 'تكييف لا يبرد',
-      bookingDate: '10/06/2025',
-      callCenterNotes: 'العميل متاح من 9 صباحاً حتى 5 مساءً',
-      sapNumber: 'SAP789123',
-      technician: 'أحمد محمود',
-      status: 'completed',
-      createdAt: '10/06/2025'
-    }
-  ]);
+  const [orders, setOrders] = useState<WorkOrder[]>([]);
 
   const [newOrder, setNewOrder] = useState({
     orderNumber: '',
@@ -57,13 +42,50 @@ const CallCenterWorkOrder = () => {
     technician: ''
   });
 
-  const technicians = ['أحمد محمود', 'محمد علي', 'خالد حسن', 'عمر سعد'];
+  const [technicians, setTechnicians] = useState<string[]>([]);
+  const [newTechnician, setNewTechnician] = useState('');
+
+  const handleAddTechnician = () => {
+    if (!newTechnician.trim()) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال اسم الفني",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (technicians.includes(newTechnician)) {
+      toast({
+        title: "خطأ",
+        description: "هذا الفني موجود بالفعل",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setTechnicians([...technicians, newTechnician]);
+    setNewTechnician('');
+    toast({
+      title: "تم إضافة الفني بنجاح",
+      description: `تم إضافة ${newTechnician} لقائمة الفنيين`,
+    });
+  };
 
   const handleCreateOrder = () => {
     if (!newOrder.orderNumber || !newOrder.customerName || !newOrder.address) {
       toast({
         title: "خطأ",
         description: "يرجى ملء الحقول المطلوبة (رقم الطلب، اسم العميل، العنوان)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newOrder.technician) {
+      toast({
+        title: "خطأ",
+        description: "يرجى اختيار الفني المختص",
         variant: "destructive"
       });
       return;
@@ -197,6 +219,45 @@ const CallCenterWorkOrder = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
+          {/* Add Technician */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                إضافة فني جديد
+              </CardTitle>
+              <CardDescription>
+                أضف فني جديد لقائمة الفنيين المتاحين
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  value={newTechnician}
+                  onChange={(e) => setNewTechnician(e.target.value)}
+                  placeholder="أدخل اسم الفني"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddTechnician()}
+                />
+                <Button onClick={handleAddTechnician}>
+                  إضافة
+                </Button>
+              </div>
+              
+              {technicians.length > 0 && (
+                <div>
+                  <Label>الفنيين المضافين:</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {technicians.map((tech, index) => (
+                      <Badge key={index} variant="secondary">
+                        {tech}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Create New Order */}
           <Card>
             <CardHeader>
@@ -305,14 +366,24 @@ const CallCenterWorkOrder = () => {
                 </Select>
               </div>
               
-              <Button onClick={handleCreateOrder} className="w-full">
+              <Button 
+                onClick={handleCreateOrder} 
+                className="w-full"
+                disabled={technicians.length === 0}
+              >
                 إنشاء وتوزيع الطلب
               </Button>
+              
+              {technicians.length === 0 && (
+                <p className="text-sm text-red-600 text-center">
+                  يجب إضافة فني واحد على الأقل لإنشاء طلب صيانة
+                </p>
+              )}
             </CardContent>
           </Card>
 
           {/* Orders List */}
-          <Card>
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -328,36 +399,44 @@ const CallCenterWorkOrder = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {orders.map((order) => (
-                  <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-elaraby-blue">#{order.orderNumber}</h4>
-                        <p className="text-sm text-gray-600">{order.customerName}</p>
+              {orders.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>لا توجد طلبات صيانة حتى الآن</p>
+                  <p className="text-sm">ابدأ بإنشاء طلب صيانة جديد</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {orders.map((order) => (
+                    <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-semibold text-elaraby-blue">#{order.orderNumber}</h4>
+                          <p className="text-sm text-gray-600">{order.customerName}</p>
+                        </div>
+                        <Badge className={getStatusColor(order.status)}>
+                          {getStatusText(order.status)}
+                        </Badge>
                       </div>
-                      <Badge className={getStatusColor(order.status)}>
-                        {getStatusText(order.status)}
-                      </Badge>
+                      
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>🏠 رقم العقار: {order.propertyNumber}</p>
+                        <p>📍 {order.address}</p>
+                        <p>📝 الشكوى: {order.customerComplaint}</p>
+                        <p>📅 تاريخ الحجز: {order.bookingDate}</p>
+                        <p>💻 SAP: {order.sapNumber}</p>
+                        <p>👨‍🔧 {order.technician}</p>
+                      </div>
+                      
+                      {order.callCenterNotes && (
+                        <p className="text-sm bg-blue-50 p-2 rounded mt-2">
+                          <strong>ملاحظات الكول سنتر:</strong> {order.callCenterNotes}
+                        </p>
+                      )}
                     </div>
-                    
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>🏠 رقم العقار: {order.propertyNumber}</p>
-                      <p>📍 {order.address}</p>
-                      <p>📝 الشكوى: {order.customerComplaint}</p>
-                      <p>📅 تاريخ الحجز: {order.bookingDate}</p>
-                      <p>💻 SAP: {order.sapNumber}</p>
-                      <p>👨‍🔧 {order.technician}</p>
-                    </div>
-                    
-                    {order.callCenterNotes && (
-                      <p className="text-sm bg-blue-50 p-2 rounded mt-2">
-                        <strong>ملاحظات الكول سنتر:</strong> {order.callCenterNotes}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
