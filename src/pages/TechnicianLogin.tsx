@@ -8,6 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ArrowDown } from "lucide-react";
 
+interface ApprovedUser {
+  id: string;
+  name: string;
+  phone: string;
+  role: string;
+  password: string;
+  approvedAt: string;
+}
+
 const TechnicianLogin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -26,17 +35,50 @@ const TechnicianLogin = () => {
       return;
     }
 
-    // Simple authentication check - in real app, check against approved users database
-    if (credentials.phone === "01012345678" && credentials.password === "123") {
-      toast({
-        title: "تم تسجيل الدخول بنجاح",
-        description: "مرحباً بك في نظام الفنيين",
-      });
-      navigate("/technician");
+    // Get approved users from localStorage
+    const approvedUsers = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+    const registrationRequests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
+    
+    // Find user in approved users by phone
+    const approvedUser = approvedUsers.find((user: ApprovedUser) => user.phone === credentials.phone);
+    
+    if (approvedUser) {
+      // Find the original registration request to get the password
+      const originalRequest = registrationRequests.find((req: any) => 
+        req.id === approvedUser.id && req.status === 'approved'
+      );
+      
+      if (originalRequest && originalRequest.password === credentials.password) {
+        toast({
+          title: "تم تسجيل الدخول بنجاح",
+          description: `مرحباً بك ${approvedUser.name}`,
+        });
+        
+        // Store current user info for the session
+        localStorage.setItem('currentUser', JSON.stringify({
+          id: approvedUser.id,
+          name: approvedUser.name,
+          phone: approvedUser.phone,
+          role: approvedUser.role
+        }));
+        
+        // Navigate based on role
+        if (approvedUser.role === 'admin') {
+          navigate("/admin");
+        } else {
+          navigate("/technician");
+        }
+      } else {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: "كلمة المرور غير صحيحة",
+          variant: "destructive"
+        });
+      }
     } else {
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "رقم الهاتف أو كلمة المرور غير صحيحة",
+        description: "رقم الهاتف غير مسجل أو غير مقبول في النظام",
         variant: "destructive"
       });
     }
@@ -100,13 +142,6 @@ const TechnicianLogin = () => {
             <Button onClick={handleLogin} className="w-full bg-elaraby-blue hover:bg-elaraby-blue/90">
               تسجيل الدخول
             </Button>
-
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-semibold text-elaraby-blue mb-2">بيانات تجريبية:</h4>
-              <p className="text-sm text-gray-600">رقم الهاتف: 01012345678</p>
-              <p className="text-sm text-gray-600">كلمة المرور: 123</p>
-            </div>
 
             <div className="text-center mt-4">
               <p className="text-sm text-gray-600">
