@@ -15,9 +15,10 @@ const Index = () => {
               <div className="bg-white p-2 rounded-lg">
                 <Settings className="h-8 w-8 text-elaraby-blue" />
               </div>
-              <div>
+              <div className="text-center">
                 <h1 className="text-2xl font-bold text-white">ELARABY</h1>
-                <p className="text-blue-100">نظام إدارة الصيانة</p>
+                <p className="text-lg font-semibold text-blue-100">الحسيني للتكييف</p>
+                <p className="text-sm text-blue-100">نظام إدارة الصيانة</p>
               </div>
             </div>
           </div>
@@ -35,45 +36,7 @@ const Index = () => {
           </p>
         </div>
 
-        {/* System Features */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-white text-center mb-8">مميزات النظام</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            <Card className="bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-6 text-center">
-                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h4 className="font-bold text-elaraby-blue mb-2">إدارة متكاملة</h4>
-                <p className="text-sm text-gray-600">نظام شامل لإدارة جميع طلبات الصيانة</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-6 text-center">
-                <Clock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h4 className="font-bold text-elaraby-blue mb-2">متابعة فورية</h4>
-                <p className="text-sm text-gray-600">تتبع حالة الطلبات في الوقت الفعلي</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-6 text-center">
-                <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                <h4 className="font-bold text-elaraby-blue mb-2">فريق متخصص</h4>
-                <p className="text-sm text-gray-600">فنيون مدربون وكول سنتر متاح 24/7</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-6 text-center">
-                <FileText className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-                <h4 className="font-bold text-elaraby-blue mb-2">تقارير شاملة</h4>
-                <p className="text-sm text-gray-600">تقارير تفصيلية لجميع أعمال الصيانة</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
           {/* Technician Card */}
           <Card className="bg-white/95 backdrop-blur-sm shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105">
             <CardHeader className="text-center pb-4">
@@ -145,10 +108,48 @@ const Index = () => {
           </Card>
         </div>
 
+        {/* System Features */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-white text-center mb-8">مميزات النظام</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">إدارة متكاملة</h4>
+                <p className="text-sm text-gray-600">نظام شامل لإدارة جميع طلبات الصيانة</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <Clock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">متابعة فورية</h4>
+                <p className="text-sm text-gray-600">تتبع حالة الطلبات في الوقت الفعلي</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">فريق متخصص</h4>
+                <p className="text-sm text-gray-600">فنيون مدربون وكول سنتر متاح 24/7</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <FileText className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">تقارير شاملة</h4>
+                <p className="text-sm text-gray-600">تقارير تفصيلية لجميع أعمال الصيانة</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="text-center mt-16">
           <p className="text-blue-100 text-lg">
-            © 2025 ELARABY - جميع الحقوق محفوظة
+            © 2025 ELARABY الحسيني للتكييف - جميع الحقوق محفوظة
           </p>
         </div>
       </div>
