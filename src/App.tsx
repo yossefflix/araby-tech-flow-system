@@ -13,6 +13,8 @@ import WorkOrderForm from "./pages/WorkOrderForm";
 import CallCenterDashboard from "./pages/CallCenterDashboard";
 import CallCenterWorkOrder from "./pages/CallCenterWorkOrder";
 import Register from "./pages/Register";
+import CallCenterRegister from "./pages/CallCenterRegister";
+import CallCenterLogin from "./pages/CallCenterLogin";
 import AccountManagement from "./pages/AccountManagement";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/call-center-register" element={<CallCenterRegister />} />
+          <Route path="/call-center-login" element={<CallCenterLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/account-management" element={<AccountManagement />} />
           <Route path="/call-center-work-order" element={<CallCenterWorkOrder />} />

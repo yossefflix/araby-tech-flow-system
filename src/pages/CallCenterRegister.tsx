@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { UserPlus, ArrowDown } from "lucide-react";
 import { localDB } from "@/utils/localDatabase";
 
-const Register = () => {
+const CallCenterRegister = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -71,7 +71,7 @@ const Register = () => {
       localDB.addRegistrationRequest({
         name: formData.name,
         phone: formData.phone,
-        role: 'technician',
+        role: 'call_center',
         password: formData.password
       });
 
@@ -97,7 +97,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-elaraby-blue to-elaraby-lightblue flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-600 to-green-400 flex items-center justify-center p-4">
       {/* Header */}
       <div className="absolute top-4 left-4">
         <Link to="/">
@@ -115,15 +115,15 @@ const Register = () => {
             <UserPlus className="h-12 w-12 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">ELARABY</h1>
-          <p className="text-blue-100">تسجيل حساب فني جديد</p>
+          <p className="text-green-100">تسجيل حساب كول سنتر جديد</p>
         </div>
 
         {/* Registration Card */}
         <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-elaraby-blue">إنشاء حساب فني جديد</CardTitle>
+            <CardTitle className="text-2xl text-green-600">إنشاء حساب كول سنتر جديد</CardTitle>
             <CardDescription>
-              أدخل بياناتك لطلب إنشاء حساب فني جديد
+              أدخل بياناتك لطلب إنشاء حساب كول سنتر جديد
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -175,14 +175,14 @@ const Register = () => {
               />
             </div>
             
-            <Button onClick={handleSubmit} className="w-full bg-elaraby-blue hover:bg-elaraby-blue/90">
+            <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700">
               إرسال طلب التسجيل
             </Button>
 
             <div className="text-center mt-4">
               <p className="text-sm text-gray-600">
                 لديك حساب بالفعل؟{" "}
-                <Link to="/technician-login" className="text-elaraby-blue hover:underline">
+                <Link to="/call-center-login" className="text-green-600 hover:underline">
                   تسجيل الدخول
                 </Link>
               </p>
@@ -194,4 +194,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default CallCenterRegister;
