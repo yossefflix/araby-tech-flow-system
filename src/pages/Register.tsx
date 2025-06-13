@@ -1,0 +1,175 @@
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import { UserPlus, ArrowDown } from "lucide-react";
+
+const Register = () => {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    name: '',
+    role: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.role || !formData.password || !formData.confirmPassword) {
+      toast({
+        title: "خطأ",
+        description: "يرجى ملء جميع الحقول المطلوبة",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "خطأ",
+        description: "كلمة المرور وتأكيد كلمة المرور غير متطابقتين",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "خطأ",
+        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Save registration request to localStorage (in real app, this would be sent to backend)
+    const registrationRequests = JSON.parse(localStorage.getItem('registrationRequests') || '[]');
+    const newRequest = {
+      id: Date.now().toString(),
+      name: formData.name,
+      role: formData.role,
+      password: formData.password,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+    
+    registrationRequests.push(newRequest);
+    localStorage.setItem('registrationRequests', JSON.stringify(registrationRequests));
+
+    toast({
+      title: "تم إرسال الطلب بنجاح",
+      description: "تم إرسال طلب تسجيل الحساب للمراجعة. سيتم إشعارك عند الموافقة.",
+    });
+
+    setFormData({
+      name: '',
+      role: '',
+      password: '',
+      confirmPassword: ''
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-elaraby-blue to-elaraby-lightblue flex items-center justify-center p-4">
+      {/* Header */}
+      <div className="absolute top-4 left-4">
+        <Link to="/">
+          <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+            <ArrowDown className="h-4 w-4 ml-2" />
+            العودة للرئيسية
+          </Button>
+        </Link>
+      </div>
+
+      <div className="w-full max-w-md">
+        {/* Logo Section */}
+        <div className="text-center mb-8">
+          <div className="bg-white/20 backdrop-blur-sm rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+            <UserPlus className="h-12 w-12 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">ELARABY</h1>
+          <p className="text-blue-100">تسجيل حساب جديد</p>
+        </div>
+
+        {/* Registration Card */}
+        <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-elaraby-blue">إنشاء حساب جديد</CardTitle>
+            <CardDescription>
+              أدخل بياناتك لطلب إنشاء حساب جديد
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="name">الاسم الكامل *</Label>
+              <Input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="أدخل اسمك الكامل"
+                className="text-right"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="role">الدور *</Label>
+              <Select onValueChange={(value) => setFormData({...formData, role: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر دورك في النظام" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technician">فني</SelectItem>
+                  <SelectItem value="admin">مدير</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="password">كلمة المرور *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                placeholder="أدخل كلمة المرور (6 أحرف على الأقل)"
+                className="text-right"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">تأكيد كلمة المرور *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                placeholder="أعد إدخال كلمة المرور"
+                className="text-right"
+              />
+            </div>
+            
+            <Button onClick={handleSubmit} className="w-full bg-elaraby-blue hover:bg-elaraby-blue/90">
+              إرسال طلب التسجيل
+            </Button>
+
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600">
+                لديك حساب بالفعل؟{" "}
+                <Link to="/technician-login" className="text-elaraby-blue hover:underline">
+                  تسجيل الدخول
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Register;

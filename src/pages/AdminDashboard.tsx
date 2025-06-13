@@ -130,9 +130,14 @@ const AdminDashboard = () => {
                 <p className="text-gray-600">إدارة طلبات الصيانة</p>
               </div>
             </div>
-            <Link to="/">
-              <Button variant="outline">العودة للرئيسية</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/account-management">
+                <Button variant="outline">إدارة الحسابات</Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline">العودة للرئيسية</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>

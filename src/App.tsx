@@ -11,6 +11,8 @@ import TechnicianLogin from "./pages/TechnicianLogin";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import WorkOrderForm from "./pages/WorkOrderForm";
 import CallCenterDashboard from "./pages/CallCenterDashboard";
+import Register from "./pages/Register";
+import AccountManagement from "./pages/AccountManagement";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +24,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/account-management" element={<AccountManagement />} />
           <Route path="/technician-login" element={<TechnicianLogin />} />
           <Route path="/technician" element={<TechnicianDashboard />} />
           <Route path="/work-order/:id" element={<WorkOrderForm />} />
