@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { User, Shield, Headphones, Settings } from "lucide-react";
+import { User, Shield, Headphones, Settings, CheckCircle, Clock, Users, FileText } from "lucide-react";
 
 const Index = () => {
   return (
@@ -33,6 +33,44 @@ const Index = () => {
           <p className="text-xl text-blue-100 max-w-2xl mx-auto">
             اختر نوع حسابك للوصول إلى الخدمات المناسبة لك
           </p>
+        </div>
+
+        {/* System Features */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-white text-center mb-8">مميزات النظام</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">إدارة متكاملة</h4>
+                <p className="text-sm text-gray-600">نظام شامل لإدارة جميع طلبات الصيانة</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <Clock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">متابعة فورية</h4>
+                <p className="text-sm text-gray-600">تتبع حالة الطلبات في الوقت الفعلي</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">فريق متخصص</h4>
+                <p className="text-sm text-gray-600">فنيون مدربون وكول سنتر متاح 24/7</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <FileText className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+                <h4 className="font-bold text-elaraby-blue mb-2">تقارير شاملة</h4>
+                <p className="text-sm text-gray-600">تقارير تفصيلية لجميع أعمال الصيانة</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -110,7 +148,7 @@ const Index = () => {
         {/* Footer */}
         <div className="text-center mt-16">
           <p className="text-blue-100 text-lg">
-            © 2024 ELARABY - جميع الحقوق محفوظة
+            © 2025 ELARABY - جميع الحقوق محفوظة
           </p>
         </div>
       </div>

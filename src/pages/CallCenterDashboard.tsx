@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
-import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown } from "lucide-react";
+import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus } from "lucide-react";
 
 interface CompletedOrder {
   id: string;
@@ -29,28 +28,7 @@ interface CompletedOrder {
 }
 
 const CallCenterDashboard = () => {
-  const [orders] = useState<CompletedOrder[]>([
-    {
-      id: 'CAS202506024421001',
-      customerName: 'محمد قاسم',
-      address: 'المدينة البريطانية، طريق برنهام هيلز',
-      phone: '729337925',
-      technician: 'أحمد محمود',
-      equipmentModel1: 'AH-XP24UHE',
-      equipmentSerial1: '21F2000410008HX4UH',
-      equipmentModel2: 'AU-X24UHE',
-      equipmentSerial2: '20L1000295740X4UH',
-      warrantyStatus: 'خارج الضمان',
-      workDescription: 'تم تنظيف المكثف وشحن الفريون وفحص الدائرة الكهربائية',
-      partsUsed: 'فريون R410A - 2 كيلو',
-      recommendations: 'تنظيف دوري كل 6 أشهر',
-      photos: 5,
-      videos: 2,
-      completedDate: '10/06/2025',
-      status: 'pending-review'
-    }
-  ]);
-
+  const [orders] = useState<CompletedOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<CompletedOrder | null>(null);
 
   const getStatusColor = (status: string) => {
@@ -72,7 +50,6 @@ const CallCenterDashboard = () => {
   };
 
   const handleUploadToElaraby = (order: CompletedOrder) => {
-    // Simulate upload process
     console.log('Uploading to ELARABY website:', order);
     alert('تم رفع البيانات إلى موقع العربي بنجاح');
   };
@@ -92,12 +69,20 @@ const CallCenterDashboard = () => {
                 <p className="text-gray-600">مراجعة ورفع البيانات</p>
               </div>
             </div>
-            <Link to="/">
-              <Button variant="outline">
-                <ArrowDown className="h-4 w-4 ml-2" />
-                العودة للرئيسية
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/call-center-work-order">
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Plus className="h-4 w-4 ml-2" />
+                  إضافة طلب جديد
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline">
+                  <ArrowDown className="h-4 w-4 ml-2" />
+                  العودة للرئيسية
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -167,30 +152,37 @@ const CallCenterDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {orders.map((order) => (
-                  <div 
-                    key={order.id} 
-                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => setSelectedOrder(order)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
-                        <p className="text-sm text-gray-600">{order.customerName}</p>
-                      </div>
-                      <Badge className={getStatusColor(order.status)}>
-                        {getStatusText(order.status)}
-                      </Badge>
-                    </div>
-                    
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>📱 {order.phone}</p>
-                      <p>👨‍🔧 {order.technician}</p>
-                      <p>📅 {order.completedDate}</p>
-                      <p>📸 {order.photos} صور، 🎥 {order.videos} فيديو</p>
-                    </div>
+                {orders.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>لا توجد تقارير مكتملة حالياً</p>
                   </div>
-                ))}
+                ) : (
+                  orders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
+                          <p className="text-sm text-gray-600">{order.customerName}</p>
+                        </div>
+                        <Badge className={getStatusColor(order.status)}>
+                          {getStatusText(order.status)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>📱 {order.phone}</p>
+                        <p>👨‍🔧 {order.technician}</p>
+                        <p>📅 {order.completedDate}</p>
+                        <p>📸 {order.photos} صور، 🎥 {order.videos} فيديو</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
