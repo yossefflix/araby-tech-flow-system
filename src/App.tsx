@@ -11,6 +11,7 @@ import TechnicianLogin from "./pages/TechnicianLogin";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import WorkOrderForm from "./pages/WorkOrderForm";
 import CallCenterDashboard from "./pages/CallCenterDashboard";
+import CallCenterWorkOrder from "./pages/CallCenterWorkOrder";
 import Register from "./pages/Register";
 import AccountManagement from "./pages/AccountManagement";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/account-management" element={<AccountManagement />} />
+          <Route path="/call-center-work-order" element={<CallCenterWorkOrder />} />
           <Route path="/technician-login" element={<TechnicianLogin />} />
           <Route path="/technician" element={<TechnicianDashboard />} />
           <Route path="/work-order/:id" element={<WorkOrderForm />} />
