@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video } from "lucide-react";
+import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video, Download } from "lucide-react";
 
 interface WorkOrder {
   id: string;
@@ -98,6 +97,18 @@ const CallCenterDashboard = () => {
 
   const getOrderForReport = (reportOrderId: string) => {
     return orders.find(order => order.id === reportOrderId);
+  };
+
+  const handleDownloadFile = (fileName: string, fileSize: number) => {
+    // Create a mock download since we don't have actual file storage
+    // In a real app, this would download from a server/cloud storage
+    const link = document.createElement('a');
+    link.href = '#'; // This would be the actual file URL
+    link.download = fileName;
+    link.click();
+    
+    // Show a notification that download started
+    console.log(`تم بدء تحميل الملف: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
   };
 
   return (
@@ -444,16 +455,28 @@ const CallCenterDashboard = () => {
                           {selectedReport.photos.length > 0 && (
                             <div className="mb-3">
                               <p className="text-sm font-medium mb-2">الصور ({selectedReport.photos.length}):</p>
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 gap-2">
                                 {selectedReport.photos.map((photo, index) => (
-                                  <div key={index} className="bg-white p-2 rounded border text-xs">
-                                    <div className="flex items-center gap-1">
-                                      <Camera className="h-3 w-3 text-blue-600" />
-                                      <span className="truncate">{photo.name}</span>
+                                  <div key={index} className="bg-white p-3 rounded border">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <Camera className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-medium truncate">{photo.name}</p>
+                                          <p className="text-xs text-gray-500">
+                                            {(photo.size / 1024 / 1024).toFixed(2)} MB
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDownloadFile(photo.name, photo.size)}
+                                        className="flex-shrink-0 mr-2"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </Button>
                                     </div>
-                                    <p className="text-gray-500 mt-1">
-                                      {(photo.size / 1024 / 1024).toFixed(2)} MB
-                                    </p>
                                   </div>
                                 ))}
                               </div>
@@ -465,14 +488,26 @@ const CallCenterDashboard = () => {
                               <p className="text-sm font-medium mb-2">الفيديوهات ({selectedReport.videos.length}):</p>
                               <div className="grid grid-cols-1 gap-2">
                                 {selectedReport.videos.map((video, index) => (
-                                  <div key={index} className="bg-white p-2 rounded border text-xs">
-                                    <div className="flex items-center gap-1">
-                                      <Video className="h-3 w-3 text-purple-600" />
-                                      <span className="truncate">{video.name}</span>
+                                  <div key={index} className="bg-white p-3 rounded border">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <Video className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-medium truncate">{video.name}</p>
+                                          <p className="text-xs text-gray-500">
+                                            {(video.size / 1024 / 1024).toFixed(2)} MB
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDownloadFile(video.name, video.size)}
+                                        className="flex-shrink-0 mr-2"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </Button>
                                     </div>
-                                    <p className="text-gray-500 mt-1">
-                                      {(video.size / 1024 / 1024).toFixed(2)} MB
-                                    </p>
                                   </div>
                                 ))}
                               </div>
