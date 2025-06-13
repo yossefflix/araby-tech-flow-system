@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video, Download } from "lucide-react";
+import { Phone, Search, CheckCircle, Upload, Eye, ArrowDown, Plus, FileText, Camera, Video, X, Maximize2 } from "lucide-react";
 
 interface WorkOrder {
   id: string;
@@ -33,8 +33,8 @@ interface WorkReport {
   partsUsed: string;
   recommendations: string;
   customerSignature: string;
-  photos: { name: string; size: number }[];
-  videos: { name: string; size: number }[];
+  photos: { name: string; size: number, data: string }[];
+  videos: { name: string; size: number, data: string }[];
   submittedAt: string;
   technicianName: string;
 }
@@ -46,6 +46,7 @@ const CallCenterDashboard = () => {
   const [selectedReport, setSelectedReport] = useState<WorkReport | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'orders' | 'reports'>('orders');
+  const [selectedMedia, setSelectedMedia] = useState<{ type: 'image' | 'video', data: string, name: string } | null>(null);
 
   useEffect(() => {
     // Get work orders from localStorage
@@ -99,17 +100,39 @@ const CallCenterDashboard = () => {
     return orders.find(order => order.id === reportOrderId);
   };
 
-  const handleDownloadFile = (fileName: string, fileSize: number) => {
-    // Create a mock download since we don't have actual file storage
-    // In a real app, this would download from a server/cloud storage
-    const link = document.createElement('a');
-    link.href = '#'; // This would be the actual file URL
-    link.download = fileName;
-    link.click();
-    
-    // Show a notification that download started
-    console.log(`تم بدء تحميل الملف: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
-  };
+  const MediaViewer = ({ media, onClose }: { media: { type: 'image' | 'video', data: string, name: string }, onClose: () => void }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="relative max-w-4xl max-h-4xl w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
+        <Button
+          onClick={onClose}
+          className="absolute top-2 right-2 z-10 bg-white text-black hover:bg-gray-200"
+          size="sm"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        
+        {media.type === 'image' ? (
+          <img
+            src={media.data}
+            alt={media.name}
+            className="w-full h-full object-contain rounded-lg"
+          />
+        ) : (
+          <video
+            src={media.data}
+            controls
+            className="w-full h-full object-contain rounded-lg"
+          >
+            متصفحك لا يدعم تشغيل الفيديو
+          </video>
+        )}
+        
+        <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white p-2 rounded">
+          {media.name}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-elaraby-gray">
@@ -146,6 +169,14 @@ const CallCenterDashboard = () => {
           </div>
         </div>
       </header>
+
+      {/* Media Viewer Modal */}
+      {selectedMedia && (
+        <MediaViewer
+          media={selectedMedia}
+          onClose={() => setSelectedMedia(null)}
+        />
+      )}
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
@@ -453,29 +484,37 @@ const CallCenterDashboard = () => {
                           <h4 className="font-semibold mb-2">الصور والفيديوهات</h4>
                           
                           {selectedReport.photos.length > 0 && (
-                            <div className="mb-3">
-                              <p className="text-sm font-medium mb-2">الصور ({selectedReport.photos.length}):</p>
-                              <div className="grid grid-cols-1 gap-2">
+                            <div className="mb-4">
+                              <p className="text-sm font-medium mb-3">الصور ({selectedReport.photos.length}):</p>
+                              <div className="grid grid-cols-2 gap-3">
                                 {selectedReport.photos.map((photo, index) => (
-                                  <div key={index} className="bg-white p-3 rounded border">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <Camera className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-sm font-medium truncate">{photo.name}</p>
-                                          <p className="text-xs text-gray-500">
-                                            {(photo.size / 1024 / 1024).toFixed(2)} MB
-                                          </p>
+                                  <div key={index} className="relative group">
+                                    <div className="bg-white p-2 rounded border hover:shadow-md transition-shadow cursor-pointer">
+                                      <img
+                                        src={photo.data}
+                                        alt={photo.name}
+                                        className="w-full h-32 object-cover rounded mb-2"
+                                        onClick={() => setSelectedMedia({ type: 'image', data: photo.data, name: photo.name })}
+                                      />
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                                          <Camera className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-medium truncate">{photo.name}</p>
+                                            <p className="text-xs text-gray-500">
+                                              {(photo.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                          </div>
                                         </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setSelectedMedia({ type: 'image', data: photo.data, name: photo.name })}
+                                          className="p-1 h-6 w-6"
+                                        >
+                                          <Maximize2 className="h-3 w-3" />
+                                        </Button>
                                       </div>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleDownloadFile(photo.name, photo.size)}
-                                        className="flex-shrink-0 mr-2"
-                                      >
-                                        <Download className="h-4 w-4" />
-                                      </Button>
                                     </div>
                                   </div>
                                 ))}
@@ -485,11 +524,11 @@ const CallCenterDashboard = () => {
 
                           {selectedReport.videos.length > 0 && (
                             <div>
-                              <p className="text-sm font-medium mb-2">الفيديوهات ({selectedReport.videos.length}):</p>
-                              <div className="grid grid-cols-1 gap-2">
+                              <p className="text-sm font-medium mb-3">الفيديوهات ({selectedReport.videos.length}):</p>
+                              <div className="grid grid-cols-1 gap-3">
                                 {selectedReport.videos.map((video, index) => (
                                   <div key={index} className="bg-white p-3 rounded border">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <Video className="h-4 w-4 text-purple-600 flex-shrink-0" />
                                         <div className="min-w-0 flex-1">
@@ -502,12 +541,20 @@ const CallCenterDashboard = () => {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleDownloadFile(video.name, video.size)}
-                                        className="flex-shrink-0 mr-2"
+                                        onClick={() => setSelectedMedia({ type: 'video', data: video.data, name: video.name })}
+                                        className="flex-shrink-0"
                                       >
-                                        <Download className="h-4 w-4" />
+                                        <Maximize2 className="h-4 w-4" />
                                       </Button>
                                     </div>
+                                    <video
+                                      src={video.data}
+                                      controls
+                                      className="w-full h-48 object-contain rounded bg-gray-100"
+                                      onClick={() => setSelectedMedia({ type: 'video', data: video.data, name: video.name })}
+                                    >
+                                      متصفحك لا يدعم تشغيل الفيديو
+                                    </video>
                                   </div>
                                 ))}
                               </div>
