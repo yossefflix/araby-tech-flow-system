@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, Download, Eye, Calendar, User, Wrench, Image, Video } from "lucide-react";
+import { ArrowLeft, FileText, Download, Eye, Calendar, User, Wrench, Image, Video, ExternalLink } from "lucide-react";
 import { supabaseDB, WorkReport, WorkOrder } from "@/utils/supabaseDatabase";
 import { authUtils, CurrentUser } from "@/utils/authUtils";
 import { useToast } from "@/hooks/use-toast";
+import { fileStorage } from "@/utils/fileStorage";
 
 const WorkReports = () => {
   const [workReports, setWorkReports] = useState<(WorkReport & { orderDetails?: WorkOrder })[]>([]);
@@ -38,10 +39,8 @@ const WorkReports = () => {
 
       setCurrentUser(user);
 
-      // جلب تقارير العمل
       const reports = await supabaseDB.getWorkReports();
       
-      // جلب تفاصيل الطلبات لكل تقرير
       const reportsWithDetails = await Promise.all(
         reports.map(async (report) => {
           const orderDetails = await supabaseDB.getWorkOrder(report.orderId);
@@ -62,12 +61,23 @@ const WorkReports = () => {
     }
   };
 
-  const downloadFile = (fileName: string, fileSize: number) => {
-    // هنا يمكن إضافة منطق تحميل الملف من Supabase Storage إذا كان متاحاً
+  const downloadFile = (fileUrl: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName.split('/').pop() || 'file';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast({
       title: "تحميل الملف",
-      description: `جاري تحميل ${fileName}...`,
+      description: `جاري تحميل ${fileName.split('/').pop()}...`,
     });
+  };
+
+  const viewFile = (fileUrl: string) => {
+    window.open(fileUrl, '_blank');
   };
 
   const formatFileSize = (bytes: number) => {
@@ -286,18 +296,34 @@ const WorkReports = () => {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {report.photos.map((photo, index) => (
                           <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="relative mb-2">
+                              <img 
+                                src={photo.fileUrl || fileStorage.getFileUrl(photo.fileName)} 
+                                alt="صورة العمل"
+                                className="w-full h-20 object-cover rounded cursor-pointer"
+                                onClick={() => viewFile(photo.fileUrl || fileStorage.getFileUrl(photo.fileName))}
+                              />
+                            </div>
                             <div className="flex items-center justify-between mb-2">
-                              <Image className="h-5 w-5 text-blue-600" />
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => downloadFile(photo.name, photo.size)}
+                                onClick={() => viewFile(photo.fileUrl || fileStorage.getFileUrl(photo.fileName))}
+                                className="flex-1 mr-1"
+                              >
+                                <Eye className="h-3 w-3 ml-1" />
+                                عرض
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadFile(photo.fileUrl || fileStorage.getFileUrl(photo.fileName), photo.fileName)}
                               >
                                 <Download className="h-3 w-3" />
                               </Button>
                             </div>
-                            <p className="text-xs text-gray-600 truncate">{photo.name}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(photo.size)}</p>
+                            <p className="text-xs text-gray-600 truncate">{photo.fileName.split('/').pop()}</p>
+                            <p className="text-xs text-gray-500">{formatFileSize(photo.fileSize)}</p>
                           </div>
                         ))}
                       </div>
@@ -314,18 +340,34 @@ const WorkReports = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {report.videos.map((video, index) => (
                           <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="relative mb-2">
+                              <video 
+                                src={video.fileUrl || fileStorage.getFileUrl(video.fileName)}
+                                className="w-full h-32 object-cover rounded"
+                                controls
+                                preload="metadata"
+                              />
+                            </div>
                             <div className="flex items-center justify-between mb-2">
-                              <Video className="h-5 w-5 text-purple-600" />
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => downloadFile(video.name, video.size)}
+                                onClick={() => viewFile(video.fileUrl || fileStorage.getFileUrl(video.fileName))}
+                                className="flex-1 mr-1"
+                              >
+                                <ExternalLink className="h-3 w-3 ml-1" />
+                                فتح
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadFile(video.fileUrl || fileStorage.getFileUrl(video.fileName), video.fileName)}
                               >
                                 <Download className="h-3 w-3" />
                               </Button>
                             </div>
-                            <p className="text-xs text-gray-600 truncate">{video.name}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(video.size)}</p>
+                            <p className="text-xs text-gray-600 truncate">{video.fileName.split('/').pop()}</p>
+                            <p className="text-xs text-gray-500">{formatFileSize(video.fileSize)}</p>
                           </div>
                         ))}
                       </div>

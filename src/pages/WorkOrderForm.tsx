@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 import { Upload, Camera, FileText, ArrowDown, CheckCircle, Save, X } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
+import { fileStorage, FileUploadResult } from "@/utils/fileStorage";
 
 interface WorkReport {
   orderId: string;
@@ -23,8 +23,8 @@ interface WorkReport {
   partsUsed: string;
   recommendations: string;
   customerSignature: string;
-  photos: { name: string; size: number }[];
-  videos: { name: string; size: number }[];
+  photos: FileUploadResult[];
+  videos: FileUploadResult[];
   technicianName: string;
 }
 
@@ -34,6 +34,7 @@ const WorkOrderForm = () => {
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     acType: '',
@@ -46,8 +47,8 @@ const WorkOrderForm = () => {
     partsUsed: '',
     recommendations: '',
     customerSignature: '',
-    photos: [] as File[],
-    videos: [] as File[]
+    photos: [] as FileUploadResult[],
+    videos: [] as FileUploadResult[]
   });
 
   useEffect(() => {
@@ -60,11 +61,9 @@ const WorkOrderForm = () => {
     try {
       if (!id) return;
 
-      // Load work order data from Supabase
       const order = await supabaseDB.getWorkOrder(id);
       if (order) {
         setWorkOrder(order);
-        // Pre-fill AC type if it exists in the work order
         if (order.acType) {
           setFormData(prev => ({
             ...prev,
@@ -73,7 +72,6 @@ const WorkOrderForm = () => {
         }
       }
 
-      // Check if there's an existing work report
       const existingReport = await supabaseDB.getWorkReport(id);
       if (existingReport) {
         setFormData(prev => ({
@@ -88,20 +86,19 @@ const WorkOrderForm = () => {
           partsUsed: existingReport.partsUsed || '',
           recommendations: existingReport.recommendations || '',
           customerSignature: existingReport.customerSignature || '',
-          photos: [], // Reset file arrays as they can't be restored
-          videos: []
+          photos: existingReport.photos || [],
+          videos: existingReport.videos || []
         }));
       }
 
-      // Load saved form data from localStorage as backup
       const savedFormData = localStorage.getItem(`workOrderForm_${id}`);
       if (savedFormData && !existingReport) {
         const parsedData = JSON.parse(savedFormData);
         setFormData(prev => ({
           ...prev,
           ...parsedData,
-          photos: [], // Reset file arrays as they can't be serialized
-          videos: []
+          photos: parsedData.photos || [],
+          videos: parsedData.videos || []
         }));
       }
     } catch (error) {
@@ -111,22 +108,45 @@ const WorkOrderForm = () => {
     }
   };
 
-  const handleFileUpload = (type: 'photos' | 'videos', files: FileList | null) => {
-    if (files) {
+  const handleFileUpload = async (type: 'photos' | 'videos', files: FileList | null) => {
+    if (!files || !id) return;
+
+    setUploading(true);
+    try {
       const fileArray = Array.from(files);
-      setFormData(prev => ({
-        ...prev,
-        [type]: [...prev[type], ...fileArray]
-      }));
+      const folderName = `${id}/${type}`;
       
+      const uploadResults = await fileStorage.uploadMultipleFiles(fileArray, folderName);
+      
+      if (uploadResults.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          [type]: [...prev[type], ...uploadResults]
+        }));
+        
+        toast({
+          title: "تم رفع الملفات",
+          description: `تم رفع ${uploadResults.length} ${type === 'photos' ? 'صورة' : 'فيديو'} بنجاح`,
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
       toast({
-        title: "تم رفع الملفات",
-        description: `تم رفع ${fileArray.length} ${type === 'photos' ? 'صورة' : 'فيديو'} بنجاح`,
+        title: "خطأ في رفع الملفات",
+        description: "فشل في رفع بعض الملفات",
+        variant: "destructive"
       });
+    } finally {
+      setUploading(false);
     }
   };
 
-  const removeFile = (type: 'photos' | 'videos', index: number) => {
+  const removeFile = async (type: 'photos' | 'videos', index: number) => {
+    const fileToRemove = formData[type][index];
+    
+    // حذف الملف من Supabase Storage
+    await fileStorage.deleteFile(fileToRemove.fileName);
+    
     setFormData(prev => ({
       ...prev,
       [type]: prev[type].filter((_, i) => i !== index)
@@ -135,11 +155,8 @@ const WorkOrderForm = () => {
 
   const handleSave = () => {
     if (id) {
-      // Save form data to localStorage as backup
       const dataToSave = {
-        ...formData,
-        photos: [], // Don't save files
-        videos: []  // Don't save files
+        ...formData
       };
       localStorage.setItem(`workOrderForm_${id}`, JSON.stringify(dataToSave));
       
@@ -151,7 +168,6 @@ const WorkOrderForm = () => {
   };
 
   const handleSubmit = async () => {
-    // Only check for essential fields
     if (!formData.workDescription.trim()) {
       toast({
         title: "خطأ",
@@ -166,7 +182,6 @@ const WorkOrderForm = () => {
     setSubmitting(true);
 
     try {
-      // Create work report
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
       const workReport: Omit<WorkReport, 'id' | 'submittedAt'> = {
         orderId: id,
@@ -180,25 +195,22 @@ const WorkOrderForm = () => {
         partsUsed: formData.partsUsed,
         recommendations: formData.recommendations,
         customerSignature: formData.customerSignature,
-        photos: formData.photos.map(file => ({ name: file.name, size: file.size })),
-        videos: formData.videos.map(file => ({ name: file.name, size: file.size })),
+        photos: formData.photos,
+        videos: formData.videos,
         technicianName: currentUser.name || 'فني غير محدد'
       };
 
-      // Save work report to Supabase
       const reportSuccess = await supabaseDB.addWorkReport(workReport);
       
       if (reportSuccess) {
-        // Update work order status to completed
         const statusSuccess = await supabaseDB.updateWorkOrderStatus(id, 'completed');
         
         if (statusSuccess) {
-          // Clear saved form data after successful submission
           localStorage.removeItem(`workOrderForm_${id}`);
           
           toast({
             title: "تم إرسال التقرير بنجاح",
-            description: "تم إرسال تقرير العمل إلى قاعدة البيانات",
+            description: "تم إرسال تقرير العمل مع الملفات إلى قاعدة البيانات",
           });
         } else {
           toast({
@@ -461,13 +473,15 @@ const WorkOrderForm = () => {
                     accept="image/*"
                     onChange={(e) => handleFileUpload('photos', e.target.files)}
                     className="hidden"
+                    disabled={uploading}
                   />
                   <Button
                     variant="outline"
                     onClick={() => document.getElementById('photos')?.click()}
+                    disabled={uploading}
                   >
                     <Upload className="h-4 w-4 ml-2" />
-                    اختر الصور
+                    {uploading ? 'جاري الرفع...' : 'اختر الصور'}
                   </Button>
                 </div>
                 
@@ -480,7 +494,7 @@ const WorkOrderForm = () => {
                         <div key={index} className="relative bg-gray-100 rounded-lg p-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-600 truncate">
-                              {photo.name}
+                              {photo.fileName.split('/').pop()}
                             </span>
                             <Button
                               variant="ghost"
@@ -491,6 +505,11 @@ const WorkOrderForm = () => {
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
+                          <img 
+                            src={photo.fileUrl} 
+                            alt="صورة العمل" 
+                            className="w-full h-16 object-cover rounded mt-1"
+                          />
                         </div>
                       ))}
                     </div>
@@ -510,13 +529,15 @@ const WorkOrderForm = () => {
                     accept="video/*"
                     onChange={(e) => handleFileUpload('videos', e.target.files)}
                     className="hidden"
+                    disabled={uploading}
                   />
                   <Button
                     variant="outline"
                     onClick={() => document.getElementById('videos')?.click()}
+                    disabled={uploading}
                   >
                     <Upload className="h-4 w-4 ml-2" />
-                    اختر الفيديوهات
+                    {uploading ? 'جاري الرفع...' : 'اختر الفيديوهات'}
                   </Button>
                 </div>
                 
@@ -527,9 +548,9 @@ const WorkOrderForm = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {formData.videos.map((video, index) => (
                         <div key={index} className="relative bg-gray-100 rounded-lg p-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mb-2">
                             <span className="text-xs text-gray-600 truncate">
-                              {video.name}
+                              {video.fileName.split('/').pop()}
                             </span>
                             <Button
                               variant="ghost"
@@ -540,6 +561,11 @@ const WorkOrderForm = () => {
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
+                          <video 
+                            src={video.fileUrl} 
+                            className="w-full h-24 object-cover rounded"
+                            controls
+                          />
                         </div>
                       ))}
                     </div>
@@ -556,12 +582,12 @@ const WorkOrderForm = () => {
                 <Button 
                   onClick={handleSubmit} 
                   className="flex-1 bg-green-600 hover:bg-green-700"
-                  disabled={submitting}
+                  disabled={submitting || uploading}
                 >
                   <CheckCircle className="h-5 w-5 ml-2" />
                   {submitting ? 'جاري الإرسال...' : 'إرسال التقرير إلى الكول سنتر'}
                 </Button>
-                <Button onClick={handleSave} variant="outline" disabled={submitting}>
+                <Button onClick={handleSave} variant="outline" disabled={submitting || uploading}>
                   <Save className="h-4 w-4 ml-2" />
                   حفظ
                 </Button>
