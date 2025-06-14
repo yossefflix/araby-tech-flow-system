@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -39,6 +38,12 @@ export interface WorkOrder {
   updatedAt: string;
 }
 
+export interface FileUploadResult {
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+}
+
 export interface WorkReport {
   id: string;
   orderId: string;
@@ -52,8 +57,8 @@ export interface WorkReport {
   partsUsed?: string;
   recommendations?: string;
   customerSignature?: string;
-  photos: { name: string; size: number }[];
-  videos: { name: string; size: number }[];
+  photos: FileUploadResult[];
+  videos: FileUploadResult[];
   submittedAt: string;
   technicianName: string;
 }
@@ -451,8 +456,8 @@ export const supabaseDB = {
         partsUsed: data.parts_used,
         recommendations: data.recommendations,
         customerSignature: data.customer_signature,
-        photos: Array.isArray(data.photos) ? data.photos as { name: string; size: number }[] : [],
-        videos: Array.isArray(data.videos) ? data.videos as { name: string; size: number }[] : [],
+        photos: Array.isArray(data.photos) ? data.photos as FileUploadResult[] : [],
+        videos: Array.isArray(data.videos) ? data.videos as FileUploadResult[] : [],
         submittedAt: data.submitted_at,
         technicianName: data.technician_name
       };
@@ -485,8 +490,8 @@ export const supabaseDB = {
         partsUsed: item.parts_used,
         recommendations: item.recommendations,
         customerSignature: item.customer_signature,
-        photos: Array.isArray(item.photos) ? item.photos as { name: string; size: number }[] : [],
-        videos: Array.isArray(item.videos) ? item.videos as { name: string; size: number }[] : [],
+        photos: Array.isArray(item.photos) ? item.photos as FileUploadResult[] : [],
+        videos: Array.isArray(item.videos) ? item.videos as FileUploadResult[] : [],
         submittedAt: item.submitted_at,
         technicianName: item.technician_name
       })) || [];
