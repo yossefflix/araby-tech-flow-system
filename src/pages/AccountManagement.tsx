@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { localDB, type User } from "@/utils/localDatabase";
+import { supabaseDB, type User } from "@/utils/supabaseDatabase";
 
 const AccountManagement = () => {
   const { toast } = useToast();
@@ -25,14 +25,17 @@ const AccountManagement = () => {
   }, []);
 
   const loadData = async () => {
-    const requests = await localDB.getRegistrationRequests();
-    const approved = await localDB.getApprovedUsers();
+    console.log('Loading data from Supabase...');
+    const requests = await supabaseDB.getRegistrationRequests();
+    const approved = await supabaseDB.getApprovedUsers();
+    console.log('Registration requests:', requests);
+    console.log('Approved users:', approved);
     setRegistrationRequests(requests);
     setApprovedUsers(approved);
   };
 
   const handleApprove = async (requestId: string) => {
-    const success = await localDB.updateUserStatus(requestId, 'approved');
+    const success = await supabaseDB.updateUserStatus(requestId, 'approved');
     
     if (success) {
       const user = registrationRequests.find(req => req.id === requestId);
@@ -53,7 +56,7 @@ const AccountManagement = () => {
 
   const handleReject = async (requestId: string) => {
     const user = registrationRequests.find(req => req.id === requestId);
-    const success = await localDB.updateUserStatus(requestId, 'rejected');
+    const success = await supabaseDB.updateUserStatus(requestId, 'rejected');
     
     if (success) {
       await loadData(); // Refresh data
@@ -74,7 +77,7 @@ const AccountManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     const user = approvedUsers.find(u => u.id === userId);
-    const success = await localDB.deleteUser(userId);
+    const success = await supabaseDB.deleteUser(userId);
     
     if (success) {
       await loadData(); // Refresh data

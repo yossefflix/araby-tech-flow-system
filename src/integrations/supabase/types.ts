@@ -9,7 +9,185 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      approved_users: {
+        Row: {
+          approved_at: string
+          created_at: string
+          id: string
+          name: string
+          password: string
+          phone: string
+          role: string
+        }
+        Insert: {
+          approved_at?: string
+          created_at?: string
+          id?: string
+          name: string
+          password: string
+          phone: string
+          role: string
+        }
+        Update: {
+          approved_at?: string
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string
+          phone?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      registration_requests: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password: string
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password: string
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      work_orders: {
+        Row: {
+          ac_type: string | null
+          address: string
+          assigned_technician: string | null
+          booking_date: string | null
+          created_at: string
+          customer_complaint: string | null
+          customer_name: string
+          id: string
+          phone: string | null
+          property_number: string | null
+          sap_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ac_type?: string | null
+          address: string
+          assigned_technician?: string | null
+          booking_date?: string | null
+          created_at?: string
+          customer_complaint?: string | null
+          customer_name: string
+          id?: string
+          phone?: string | null
+          property_number?: string | null
+          sap_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ac_type?: string | null
+          address?: string
+          assigned_technician?: string | null
+          booking_date?: string | null
+          created_at?: string
+          customer_complaint?: string | null
+          customer_name?: string
+          id?: string
+          phone?: string | null
+          property_number?: string | null
+          sap_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      work_reports: {
+        Row: {
+          ac_type: string | null
+          customer_signature: string | null
+          equipment_model1: string | null
+          equipment_model2: string | null
+          equipment_serial1: string | null
+          equipment_serial2: string | null
+          id: string
+          order_id: string
+          parts_used: string | null
+          photos: Json | null
+          recommendations: string | null
+          submitted_at: string
+          technician_name: string
+          videos: Json | null
+          warranty_status: string | null
+          work_description: string
+        }
+        Insert: {
+          ac_type?: string | null
+          customer_signature?: string | null
+          equipment_model1?: string | null
+          equipment_model2?: string | null
+          equipment_serial1?: string | null
+          equipment_serial2?: string | null
+          id?: string
+          order_id: string
+          parts_used?: string | null
+          photos?: Json | null
+          recommendations?: string | null
+          submitted_at?: string
+          technician_name: string
+          videos?: Json | null
+          warranty_status?: string | null
+          work_description: string
+        }
+        Update: {
+          ac_type?: string | null
+          customer_signature?: string | null
+          equipment_model1?: string | null
+          equipment_model2?: string | null
+          equipment_serial1?: string | null
+          equipment_serial2?: string | null
+          id?: string
+          order_id?: string
+          parts_used?: string | null
+          photos?: Json | null
+          recommendations?: string | null
+          submitted_at?: string
+          technician_name?: string
+          videos?: Json | null
+          warranty_status?: string | null
+          work_description?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_reports_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

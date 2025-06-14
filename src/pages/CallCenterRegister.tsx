@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { UserPlus, ArrowDown } from "lucide-react";
-import { localDB } from "@/utils/localDatabase";
+import { supabaseDB } from "@/utils/supabaseDatabase";
 
 const CallCenterRegister = () => {
   const { toast } = useToast();
@@ -57,7 +56,7 @@ const CallCenterRegister = () => {
     }
 
     // Check if phone number is already registered
-    const phoneRegistered = await localDB.isPhoneRegistered(formData.phone);
+    const phoneRegistered = await supabaseDB.isPhoneRegistered(formData.phone);
     if (phoneRegistered) {
       toast({
         title: "خطأ",
@@ -67,28 +66,33 @@ const CallCenterRegister = () => {
       return;
     }
 
-    // Add registration request using local database
+    // Add registration request using Supabase
     try {
-      await localDB.addRegistrationRequest({
+      const success = await supabaseDB.addRegistrationRequest({
         name: formData.name,
         phone: formData.phone,
         role: 'call_center',
         password: formData.password
       });
 
-      toast({
-        title: "تم إرسال الطلب بنجاح",
-        description: "تم إرسال طلب تسجيل الحساب للمراجعة. سيتم إشعارك عند الموافقة.",
-      });
+      if (success) {
+        toast({
+          title: "تم إرسال الطلب بنجاح",
+          description: "تم إرسال طلب تسجيل الحساب للمراجعة. سيتم إشعارك عند الموافقة.",
+        });
 
-      // Reset form
-      setFormData({
-        name: '',
-        phone: '',
-        password: '',
-        confirmPassword: ''
-      });
+        // Reset form
+        setFormData({
+          name: '',
+          phone: '',
+          password: '',
+          confirmPassword: ''
+        });
+      } else {
+        throw new Error('Failed to submit request');
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
         title: "خطأ",
         description: "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.",
