@@ -7,13 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus, ArrowDown, User, FileText } from "lucide-react";
 import { supabaseDB } from "@/utils/supabaseDatabase";
+import { authUtils, CurrentUser } from "@/utils/authUtils";
 
 const CallCenterWorkOrder = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [technicians, setTechnicians] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     orderNumber: '',
@@ -29,8 +32,36 @@ const CallCenterWorkOrder = () => {
   });
 
   useEffect(() => {
-    loadTechnicians();
+    loadUserAndTechnicians();
   }, []);
+
+  const loadUserAndTechnicians = async () => {
+    try {
+      // Get current user from Supabase Auth
+      const user = await authUtils.getCurrentUser();
+      
+      if (!user) {
+        console.log('No authenticated user found, redirecting to login');
+        navigate('/call-center-login');
+        return;
+      }
+
+      if (user.role !== 'call_center') {
+        console.log('User is not call center, redirecting');
+        navigate('/');
+        return;
+      }
+
+      setCurrentUser(user);
+      console.log('Current user:', user);
+
+      // Load technicians
+      await loadTechnicians();
+    } catch (error) {
+      console.error('Error loading user and technicians:', error);
+      navigate('/call-center-login');
+    }
+  };
 
   // Get approved technicians from Supabase
   const loadTechnicians = async () => {
@@ -67,13 +98,18 @@ const CallCenterWorkOrder = () => {
       return;
     }
 
+    if (!currentUser) {
+      toast({
+        title: "خطأ",
+        description: "يجب تسجيل الدخول أولاً",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Get current user
-      const currentUserStr = localStorage.getItem('currentUser');
-      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-
       // Create work order object
       const workOrderData = {
         customerName: formData.customerName,
@@ -86,7 +122,7 @@ const CallCenterWorkOrder = () => {
         sapNumber: formData.sapNumber,
         assignedTechnician: formData.assignedTechnician,
         status: 'pending',
-        createdBy: currentUser?.name || 'Unknown'
+        createdBy: currentUser.name
       };
 
       console.log('Creating work order in Supabase:', workOrderData);
@@ -143,7 +179,7 @@ const CallCenterWorkOrder = () => {
                 <Plus className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-elaraby-blue">إضافة طلب صيانة</h1>
+                <h1 className="text-xl font-bold text-green-600">إضافة طلب صيانة</h1>
                 <p className="text-gray-600">إنشاء طلب صيانة جديد</p>
               </div>
             </div>

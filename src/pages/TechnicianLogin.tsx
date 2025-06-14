@@ -31,7 +31,7 @@ const TechnicianLogin = () => {
     setLoading(true);
 
     try {
-      console.log('Attempting Supabase auth login...');
+      console.log('Attempting technician login with:', credentials.phone);
 
       // First, try to find the user in approved_users table
       const { data: userData, error: userError } = await supabase
@@ -42,7 +42,7 @@ const TechnicianLogin = () => {
         .single();
 
       if (userError || !userData) {
-        console.log('User not found or invalid credentials');
+        console.log('User not found or invalid credentials:', userError);
         toast({
           title: "خطأ في تسجيل الدخول",
           description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
@@ -51,6 +51,8 @@ const TechnicianLogin = () => {
         setLoading(false);
         return;
       }
+
+      console.log('User found in approved_users:', userData);
 
       // Create a temporary email for Supabase auth (since we're using phone-based login)
       const tempEmail = `${userData.phone}@temp.local`;
@@ -62,6 +64,7 @@ const TechnicianLogin = () => {
       });
 
       if (authError) {
+        console.log('Auth error, trying to create user:', authError);
         // If user doesn't exist in auth, create them
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: tempEmail,
@@ -85,6 +88,10 @@ const TechnicianLogin = () => {
           setLoading(false);
           return;
         }
+
+        console.log('User created in auth:', signUpData);
+      } else {
+        console.log('Auth login successful:', authData);
       }
 
       console.log('Login successful:', userData);

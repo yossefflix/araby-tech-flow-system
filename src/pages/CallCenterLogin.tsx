@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { Headphones, ArrowDown } from "lucide-react";
-import { supabaseDB } from "@/utils/supabaseDatabase";
+import { supabase } from "@/integrations/supabase/client";
 
 const CallCenterLogin = () => {
   const { toast } = useToast();
@@ -16,6 +16,7 @@ const CallCenterLogin = () => {
     phone: '',
     password: ''
   });
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!credentials.phone || !credentials.password) {
@@ -27,30 +28,83 @@ const CallCenterLogin = () => {
       return;
     }
 
-    console.log('Attempting call center login with:', credentials.phone);
+    setLoading(true);
 
-    // Authenticate user using Supabase
-    const authenticatedUser = await supabaseDB.validateLogin(credentials.phone, credentials.password);
-    
-    if (authenticatedUser && authenticatedUser.role === 'call_center') {
-      console.log('Call center login successful:', authenticatedUser);
+    try {
+      console.log('Attempting call center login with:', credentials.phone);
+
+      // First, try to find the user in approved_users table
+      const { data: userData, error: userError } = await supabase
+        .from('approved_users')
+        .select('*')
+        .eq('phone', credentials.phone)
+        .eq('password', credentials.password)
+        .eq('role', 'call_center')
+        .single();
+
+      if (userError || !userData) {
+        console.log('Call center user not found or invalid credentials');
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Create a temporary email for Supabase auth
+      const tempEmail = `${userData.phone}@temp.local`;
       
-      // Store user session in localStorage for app state
-      localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
+      // Try to sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: tempEmail,
+        password: credentials.password
+      });
+
+      if (authError) {
+        // If user doesn't exist in auth, create them
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: tempEmail,
+          password: credentials.password,
+          options: {
+            data: {
+              name: userData.name,
+              phone: userData.phone,
+              role: userData.role
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
+          toast({
+            title: "خطأ في النظام",
+            description: "حدث خطأ أثناء تسجيل الدخول",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      console.log('Call center login successful:', userData);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
-        description: `مرحباً بك ${authenticatedUser.name}`,
+        description: `مرحباً بك ${userData.name}`,
       });
       
       navigate("/call-center");
-    } else {
-      console.log('Call center login failed');
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: "خطأ في تسجيل الدخول",
-        description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+        title: "خطأ في النظام",
+        description: "حدث خطأ أثناء تسجيل الدخول",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,6 +148,7 @@ const CallCenterLogin = () => {
                 onChange={(e) => setCredentials({...credentials, phone: e.target.value})}
                 placeholder="أدخل رقم هاتفك"
                 className="text-right"
+                disabled={loading}
               />
             </div>
             
@@ -106,11 +161,16 @@ const CallCenterLogin = () => {
                 onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                 placeholder="أدخل كلمة المرور"
                 className="text-right"
+                disabled={loading}
               />
             </div>
             
-            <Button onClick={handleLogin} className="w-full bg-green-600 hover:bg-green-700">
-              تسجيل الدخول
+            <Button 
+              onClick={handleLogin} 
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={loading}
+            >
+              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
 
             <div className="text-center mt-4">
