@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -299,13 +300,13 @@ export const supabaseDB = {
         propertyNumber: item.property_number,
         customerComplaint: item.customer_complaint,
         bookingDate: item.booking_date,
-        callCenterNotes: item.call_center_notes,
+        callCenterNotes: item.call_center_notes || '',
         sapNumber: item.sap_number,
         assignedTechnician: item.assigned_technician,
         acType: item.ac_type,
         status: item.status,
         createdAt: item.created_at,
-        createdBy: item.created_by,
+        createdBy: item.created_by || '',
         updatedAt: item.updated_at
       })) || [];
     } catch (error) {
@@ -333,13 +334,13 @@ export const supabaseDB = {
         propertyNumber: item.property_number,
         customerComplaint: item.customer_complaint,
         bookingDate: item.booking_date,
-        callCenterNotes: item.call_center_notes,
+        callCenterNotes: item.call_center_notes || '',
         sapNumber: item.sap_number,
         assignedTechnician: item.assigned_technician,
         acType: item.ac_type,
         status: item.status,
         createdAt: item.created_at,
-        createdBy: item.created_by,
+        createdBy: item.created_by || '',
         updatedAt: item.updated_at
       })) || [];
     } catch (error) {
@@ -367,13 +368,13 @@ export const supabaseDB = {
         propertyNumber: data.property_number,
         customerComplaint: data.customer_complaint,
         bookingDate: data.booking_date,
-        callCenterNotes: data.call_center_notes,
+        callCenterNotes: data.call_center_notes || '',
         sapNumber: data.sap_number,
         assignedTechnician: data.assigned_technician,
         acType: data.ac_type,
         status: data.status,
         createdAt: data.created_at,
-        createdBy: data.created_by,
+        createdBy: data.created_by || '',
         updatedAt: data.updated_at
       };
     } catch (error) {
@@ -450,8 +451,8 @@ export const supabaseDB = {
         partsUsed: data.parts_used,
         recommendations: data.recommendations,
         customerSignature: data.customer_signature,
-        photos: data.photos || [],
-        videos: data.videos || [],
+        photos: Array.isArray(data.photos) ? data.photos as { name: string; size: number }[] : [],
+        videos: Array.isArray(data.videos) ? data.videos as { name: string; size: number }[] : [],
         submittedAt: data.submitted_at,
         technicianName: data.technician_name
       };
@@ -484,8 +485,8 @@ export const supabaseDB = {
         partsUsed: item.parts_used,
         recommendations: item.recommendations,
         customerSignature: item.customer_signature,
-        photos: item.photos || [],
-        videos: item.videos || [],
+        photos: Array.isArray(item.photos) ? item.photos as { name: string; size: number }[] : [],
+        videos: Array.isArray(item.videos) ? item.videos as { name: string; size: number }[] : [],
         submittedAt: item.submitted_at,
         technicianName: item.technician_name
       })) || [];
