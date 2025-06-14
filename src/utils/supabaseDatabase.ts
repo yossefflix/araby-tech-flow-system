@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -62,6 +63,17 @@ export interface WorkReport {
   submittedAt: string;
   technicianName: string;
 }
+
+// Helper function to safely convert Json to FileUploadResult
+const convertJsonToFileUploadResult = (jsonArray: any): FileUploadResult[] => {
+  if (!Array.isArray(jsonArray)) return [];
+  
+  return jsonArray.map((item: any) => ({
+    fileName: item.fileName || '',
+    fileUrl: item.fileUrl || '',
+    fileSize: item.fileSize || 0
+  }));
+};
 
 export const supabaseDB = {
   // إضافة طلب تسجيل جديد
@@ -408,7 +420,7 @@ export const supabaseDB = {
     try {
       const { error } = await supabase
         .from('work_reports')
-        .insert([{
+        .insert({
           order_id: workReport.orderId,
           ac_type: workReport.acType,
           equipment_model1: workReport.equipmentModel1,
@@ -423,7 +435,7 @@ export const supabaseDB = {
           photos: workReport.photos,
           videos: workReport.videos,
           technician_name: workReport.technicianName
-        }]);
+        });
 
       return !error;
     } catch (error) {
@@ -456,8 +468,8 @@ export const supabaseDB = {
         partsUsed: data.parts_used,
         recommendations: data.recommendations,
         customerSignature: data.customer_signature,
-        photos: Array.isArray(data.photos) ? data.photos as FileUploadResult[] : [],
-        videos: Array.isArray(data.videos) ? data.videos as FileUploadResult[] : [],
+        photos: convertJsonToFileUploadResult(data.photos),
+        videos: convertJsonToFileUploadResult(data.videos),
         submittedAt: data.submitted_at,
         technicianName: data.technician_name
       };
@@ -490,8 +502,8 @@ export const supabaseDB = {
         partsUsed: item.parts_used,
         recommendations: item.recommendations,
         customerSignature: item.customer_signature,
-        photos: Array.isArray(item.photos) ? item.photos as FileUploadResult[] : [],
-        videos: Array.isArray(item.videos) ? item.videos as FileUploadResult[] : [],
+        photos: convertJsonToFileUploadResult(item.photos),
+        videos: convertJsonToFileUploadResult(item.videos),
         submittedAt: item.submitted_at,
         technicianName: item.technician_name
       })) || [];
