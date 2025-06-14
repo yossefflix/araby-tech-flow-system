@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ArrowDown } from "lucide-react";
-import { supabaseDB } from "@/utils/supabaseDatabase";
+import { supabase } from "@/integrations/supabase/client";
 
 const TechnicianLogin = () => {
   const { toast } = useToast();
@@ -16,6 +16,7 @@ const TechnicianLogin = () => {
     phone: '',
     password: ''
   });
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!credentials.phone || !credentials.password) {
@@ -27,35 +28,89 @@ const TechnicianLogin = () => {
       return;
     }
 
-    console.log('Attempting login with:', credentials.phone);
+    setLoading(true);
 
-    // Authenticate user using Supabase
-    const authenticatedUser = await supabaseDB.validateLogin(credentials.phone, credentials.password);
-    
-    if (authenticatedUser) {
-      console.log('Login successful:', authenticatedUser);
+    try {
+      console.log('Attempting Supabase auth login...');
+
+      // First, try to find the user in approved_users table
+      const { data: userData, error: userError } = await supabase
+        .from('approved_users')
+        .select('*')
+        .eq('phone', credentials.phone)
+        .eq('password', credentials.password)
+        .single();
+
+      if (userError || !userData) {
+        console.log('User not found or invalid credentials');
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Create a temporary email for Supabase auth (since we're using phone-based login)
+      const tempEmail = `${userData.phone}@temp.local`;
       
-      // Store user session in localStorage for app state
-      localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
+      // Try to sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: tempEmail,
+        password: credentials.password
+      });
+
+      if (authError) {
+        // If user doesn't exist in auth, create them
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: tempEmail,
+          password: credentials.password,
+          options: {
+            data: {
+              name: userData.name,
+              phone: userData.phone,
+              role: userData.role
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
+          toast({
+            title: "خطأ في النظام",
+            description: "حدث خطأ أثناء تسجيل الدخول",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      console.log('Login successful:', userData);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
-        description: `مرحباً بك ${authenticatedUser.name}`,
+        description: `مرحباً بك ${userData.name}`,
       });
       
       // Navigate based on role
-      if (authenticatedUser.role === 'admin') {
+      if (userData.role === 'admin') {
         navigate("/admin");
+      } else if (userData.role === 'call_center') {
+        navigate("/call-center");
       } else {
         navigate("/technician");
       }
-    } else {
-      console.log('Login failed');
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: "خطأ في تسجيل الدخول",
-        description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+        title: "خطأ في النظام",
+        description: "حدث خطأ أثناء تسجيل الدخول",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -99,6 +154,7 @@ const TechnicianLogin = () => {
                 onChange={(e) => setCredentials({...credentials, phone: e.target.value})}
                 placeholder="أدخل رقم هاتفك"
                 className="text-right"
+                disabled={loading}
               />
             </div>
             
@@ -111,11 +167,16 @@ const TechnicianLogin = () => {
                 onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                 placeholder="أدخل كلمة المرور"
                 className="text-right"
+                disabled={loading}
               />
             </div>
             
-            <Button onClick={handleLogin} className="w-full bg-elaraby-blue hover:bg-elaraby-blue/90">
-              تسجيل الدخول
+            <Button 
+              onClick={handleLogin} 
+              className="w-full bg-elaraby-blue hover:bg-elaraby-blue/90"
+              disabled={loading}
+            >
+              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
 
             <div className="text-center mt-4">

@@ -3,14 +3,16 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ClipboardList, User, CheckCircle, Clock, ArrowDown } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
+import { authUtils, CurrentUser } from "@/utils/authUtils";
 
 const TechnicianDashboard = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUserAndOrders();
@@ -18,20 +20,25 @@ const TechnicianDashboard = () => {
 
   const loadUserAndOrders = async () => {
     try {
-      // Get current logged-in user from localStorage
-      const userStr = localStorage.getItem('currentUser');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        setCurrentUser(user);
-        console.log('Current user:', user);
-
-        // Get work orders assigned to this technician from Supabase
-        const orders = await supabaseDB.getWorkOrdersByTechnician(user.name);
-        console.log('Technician orders from Supabase:', orders);
-        setWorkOrders(orders);
+      // Get current user from Supabase Auth
+      const user = await authUtils.getCurrentUser();
+      
+      if (!user) {
+        console.log('No authenticated user found, redirecting to login');
+        navigate('/technician-login');
+        return;
       }
+
+      setCurrentUser(user);
+      console.log('Current user:', user);
+
+      // Get work orders assigned to this technician from Supabase
+      const orders = await supabaseDB.getWorkOrdersByTechnician(user.name);
+      console.log('Technician orders from Supabase:', orders);
+      setWorkOrders(orders);
     } catch (error) {
       console.error('Error loading user and orders:', error);
+      navigate('/technician-login');
     } finally {
       setLoading(false);
     }
@@ -69,8 +76,14 @@ const TechnicianDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+  const handleLogout = async () => {
+    try {
+      await authUtils.signOut();
+      navigate('/technician-login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      navigate('/technician-login');
+    }
   };
 
   if (loading) {
@@ -101,9 +114,9 @@ const TechnicianDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <Link to="/technician-login" onClick={handleLogout}>
-                <Button variant="outline">تسجيل الخروج</Button>
-              </Link>
+              <Button variant="outline" onClick={handleLogout}>
+                تسجيل الخروج
+              </Button>
               <Link to="/">
                 <Button variant="outline">
                   <ArrowDown className="h-4 w-4 ml-2" />

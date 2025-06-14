@@ -81,7 +81,9 @@ export type Database = {
           address: string
           assigned_technician: string | null
           booking_date: string | null
+          call_center_notes: string | null
           created_at: string
+          created_by: string | null
           customer_complaint: string | null
           customer_name: string
           id: string
@@ -96,7 +98,9 @@ export type Database = {
           address: string
           assigned_technician?: string | null
           booking_date?: string | null
+          call_center_notes?: string | null
           created_at?: string
+          created_by?: string | null
           customer_complaint?: string | null
           customer_name: string
           id?: string
@@ -111,7 +115,9 @@ export type Database = {
           address?: string
           assigned_technician?: string | null
           booking_date?: string | null
+          call_center_notes?: string | null
           created_at?: string
+          created_by?: string | null
           customer_complaint?: string | null
           customer_name?: string
           id?: string
