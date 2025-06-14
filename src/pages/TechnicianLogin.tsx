@@ -25,7 +25,7 @@ const TechnicianLogin = () => {
     password: ''
   });
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!credentials.phone || !credentials.password) {
       toast({
         title: "خطأ",
@@ -36,7 +36,7 @@ const TechnicianLogin = () => {
     }
 
     // Authenticate user using local database
-    const authenticatedUser = localDB.authenticateUser(credentials.phone, credentials.password);
+    const authenticatedUser = await localDB.authenticateUser(credentials.phone, credentials.password);
     
     if (authenticatedUser) {
       // Set current user session

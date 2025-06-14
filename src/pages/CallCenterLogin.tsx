@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +16,7 @@ const CallCenterLogin = () => {
     password: ''
   });
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!credentials.phone || !credentials.password) {
       toast({
         title: "خطأ",
@@ -28,7 +27,7 @@ const CallCenterLogin = () => {
     }
 
     // Authenticate user using local database
-    const authenticatedUser = localDB.authenticateUser(credentials.phone, credentials.password);
+    const authenticatedUser = await localDB.authenticateUser(credentials.phone, credentials.password);
     
     if (authenticatedUser && authenticatedUser.role === 'call_center') {
       // Set current user session

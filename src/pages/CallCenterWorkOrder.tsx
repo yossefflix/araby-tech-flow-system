@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +9,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Plus, ArrowDown, User, FileText } from "lucide-react";
 import { localDB } from "@/utils/localDatabase";
+import { useEffect } from "react";
 
 const CallCenterWorkOrder = () => {
   const { toast } = useToast();
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     orderNumber: '',
     customerName: '',
@@ -25,10 +26,18 @@ const CallCenterWorkOrder = () => {
     assignedTechnician: ''
   });
 
+  useEffect(() => {
+    loadTechnicians();
+  }, []);
+
   // Get approved technicians
-  const technicians = localDB.getRegistrationRequests().filter(user => 
-    user.role === 'technician' && user.status === 'approved'
-  );
+  const loadTechnicians = async () => {
+    const requests = await localDB.getRegistrationRequests();
+    const approvedTechnicians = requests.filter(user => 
+      user.role === 'technician' && user.status === 'approved'
+    );
+    setTechnicians(approvedTechnicians);
+  };
 
   const generateOrderNumber = () => {
     const now = new Date();

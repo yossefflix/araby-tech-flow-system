@@ -24,17 +24,19 @@ const AccountManagement = () => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setRegistrationRequests(localDB.getRegistrationRequests());
-    setApprovedUsers(localDB.getApprovedUsers());
+  const loadData = async () => {
+    const requests = await localDB.getRegistrationRequests();
+    const approved = await localDB.getApprovedUsers();
+    setRegistrationRequests(requests);
+    setApprovedUsers(approved);
   };
 
-  const handleApprove = (requestId: string) => {
-    const success = localDB.updateUserStatus(requestId, 'approved');
+  const handleApprove = async (requestId: string) => {
+    const success = await localDB.updateUserStatus(requestId, 'approved');
     
     if (success) {
       const user = registrationRequests.find(req => req.id === requestId);
-      loadData(); // Refresh data
+      await loadData(); // Refresh data
       
       toast({
         title: "تم قبول الطلب",
@@ -49,12 +51,12 @@ const AccountManagement = () => {
     }
   };
 
-  const handleReject = (requestId: string) => {
+  const handleReject = async (requestId: string) => {
     const user = registrationRequests.find(req => req.id === requestId);
-    const success = localDB.updateUserStatus(requestId, 'rejected');
+    const success = await localDB.updateUserStatus(requestId, 'rejected');
     
     if (success) {
-      loadData(); // Refresh data
+      await loadData(); // Refresh data
       
       toast({
         title: "تم رفض الطلب",
@@ -70,12 +72,12 @@ const AccountManagement = () => {
     }
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const user = approvedUsers.find(u => u.id === userId);
-    const success = localDB.deleteUser(userId);
+    const success = await localDB.deleteUser(userId);
     
     if (success) {
-      loadData(); // Refresh data
+      await loadData(); // Refresh data
       
       toast({
         title: "تم حذف المستخدم",
