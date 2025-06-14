@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ArrowDown } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { authUtils } from "@/utils/authUtils";
 
 const TechnicianLogin = () => {
   const { toast } = useToast();
@@ -31,83 +31,34 @@ const TechnicianLogin = () => {
     setLoading(true);
 
     try {
-      console.log('Attempting technician login with:', credentials.phone);
-
-      // First, try to find the user in approved_users table
-      const { data: userData, error: userError } = await supabase
-        .from('approved_users')
-        .select('*')
-        .eq('phone', credentials.phone)
-        .eq('password', credentials.password)
-        .single();
-
-      if (userError || !userData) {
-        console.log('User not found or invalid credentials:', userError);
+      console.log('Attempting login for technician:', credentials.phone);
+      
+      const { user, error } = await authUtils.loginUser(credentials.phone, credentials.password);
+      
+      if (error || !user) {
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+          description: error || "فشل في تسجيل الدخول",
           variant: "destructive"
         });
         setLoading(false);
         return;
       }
 
-      console.log('User found in approved_users:', userData);
-
-      // Create a temporary email for Supabase auth (since we're using phone-based login)
-      const tempEmail = `${userData.phone}@temp.local`;
-      
-      // Try to sign in with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: tempEmail,
-        password: credentials.password
-      });
-
-      if (authError) {
-        console.log('Auth error, trying to create user:', authError);
-        // If user doesn't exist in auth, create them
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: tempEmail,
-          password: credentials.password,
-          options: {
-            data: {
-              name: userData.name,
-              phone: userData.phone,
-              role: userData.role
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          toast({
-            title: "خطأ في النظام",
-            description: "حدث خطأ أثناء تسجيل الدخول",
-            variant: "destructive"
-          });
-          setLoading(false);
-          return;
-        }
-
-        console.log('User created in auth:', signUpData);
-      } else {
-        console.log('Auth login successful:', authData);
-      }
-
-      console.log('Login successful:', userData);
+      console.log('Login successful for user:', user);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
-        description: `مرحباً بك ${userData.name}`,
+        description: `مرحباً بك ${user.name}`,
       });
       
       // Navigate based on role
-      if (userData.role === 'admin') {
-        navigate("/admin");
-      } else if (userData.role === 'call_center') {
-        navigate("/call-center");
+      if (user.role === 'admin') {
+        window.location.href = "/admin";
+      } else if (user.role === 'call_center') {
+        window.location.href = "/call-center";
       } else {
-        navigate("/technician");
+        window.location.href = "/technician";
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -175,6 +126,7 @@ const TechnicianLogin = () => {
                 placeholder="أدخل كلمة المرور"
                 className="text-right"
                 disabled={loading}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
               />
             </div>
             

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { Headphones, ArrowDown } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { authUtils } from "@/utils/authUtils";
 
 const CallCenterLogin = () => {
   const { toast } = useToast();
@@ -31,71 +31,39 @@ const CallCenterLogin = () => {
     setLoading(true);
 
     try {
-      console.log('Attempting call center login with:', credentials.phone);
-
-      // First, try to find the user in approved_users table
-      const { data: userData, error: userError } = await supabase
-        .from('approved_users')
-        .select('*')
-        .eq('phone', credentials.phone)
-        .eq('password', credentials.password)
-        .eq('role', 'call_center')
-        .single();
-
-      if (userError || !userData) {
-        console.log('Call center user not found or invalid credentials');
+      console.log('Attempting call center login for:', credentials.phone);
+      
+      const { user, error } = await authUtils.loginUser(credentials.phone, credentials.password);
+      
+      if (error || !user) {
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
+          description: error || "فشل في تسجيل الدخول",
           variant: "destructive"
         });
         setLoading(false);
         return;
       }
 
-      // Create a temporary email for Supabase auth
-      const tempEmail = `${userData.phone}@temp.local`;
-      
-      // Try to sign in with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: tempEmail,
-        password: credentials.password
-      });
-
-      if (authError) {
-        // If user doesn't exist in auth, create them
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: tempEmail,
-          password: credentials.password,
-          options: {
-            data: {
-              name: userData.name,
-              phone: userData.phone,
-              role: userData.role
-            }
-          }
+      // Check if user is call center
+      if (user.role !== 'call_center') {
+        toast({
+          title: "خطأ في الصلاحيات",
+          description: "هذا الحساب ليس مخصص للكول سنتر",
+          variant: "destructive"
         });
-
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          toast({
-            title: "خطأ في النظام",
-            description: "حدث خطأ أثناء تسجيل الدخول",
-            variant: "destructive"
-          });
-          setLoading(false);
-          return;
-        }
+        setLoading(false);
+        return;
       }
 
-      console.log('Call center login successful:', userData);
+      console.log('Call center login successful:', user);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
-        description: `مرحباً بك ${userData.name}`,
+        description: `مرحباً بك ${user.name}`,
       });
       
-      navigate("/call-center");
+      window.location.href = "/call-center";
     } catch (error) {
       console.error('Login error:', error);
       toast({
@@ -162,6 +130,7 @@ const CallCenterLogin = () => {
                 placeholder="أدخل كلمة المرور"
                 className="text-right"
                 disabled={loading}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
               />
             </div>
             

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,12 +14,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { supabaseDB, type User } from "@/utils/supabaseDatabase";
+import { supabase } from "@/integrations/supabase/client";
+
+interface User {
+  id: string;
+  name: string;
+  phone: string;
+  role: 'admin' | 'technician' | 'call_center';
+  status: 'pending' | 'approved' | 'rejected';
+  password: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  approvedAt?: string;
+}
 
 const AccountManagement = () => {
   const { toast } = useToast();
   const [registrationRequests, setRegistrationRequests] = useState<User[]>([]);
   const [approvedUsers, setApprovedUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -26,26 +41,119 @@ const AccountManagement = () => {
 
   const loadData = async () => {
     console.log('Loading data from Supabase...');
-    const requests = await supabaseDB.getRegistrationRequests();
-    const approved = await supabaseDB.getApprovedUsers();
-    console.log('Registration requests:', requests);
-    console.log('Approved users:', approved);
-    setRegistrationRequests(requests);
-    setApprovedUsers(approved);
+    setLoading(true);
+    
+    try {
+      // Load registration requests
+      const { data: requests, error: requestsError } = await supabase
+        .from('registration_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (requestsError) {
+        console.error('Error loading registration requests:', requestsError);
+      } else {
+        const formattedRequests = requests?.map(item => ({
+          id: item.id,
+          name: item.name,
+          phone: item.phone,
+          role: item.role as 'technician' | 'call_center',
+          status: item.status as 'pending' | 'approved' | 'rejected',
+          password: item.password,
+          createdAt: item.created_at,
+          reviewedAt: item.reviewed_at,
+          reviewedBy: item.reviewed_by
+        })) || [];
+        setRegistrationRequests(formattedRequests);
+        console.log('Registration requests loaded:', formattedRequests);
+      }
+
+      // Load approved users
+      const { data: approved, error: approvedError } = await supabase
+        .from('approved_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (approvedError) {
+        console.error('Error loading approved users:', approvedError);
+      } else {
+        const formattedApproved = approved?.map(item => ({
+          id: item.id,
+          name: item.name,
+          phone: item.phone,
+          role: item.role as 'admin' | 'technician' | 'call_center',
+          status: 'approved' as const,
+          password: item.password,
+          createdAt: item.created_at,
+          approvedAt: item.approved_at
+        })) || [];
+        setApprovedUsers(formattedApproved);
+        console.log('Approved users loaded:', formattedApproved);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحميل البيانات",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApprove = async (requestId: string) => {
-    const success = await supabaseDB.updateUserStatus(requestId, 'approved');
-    
-    if (success) {
+    try {
       const user = registrationRequests.find(req => req.id === requestId);
+      if (!user) return;
+
+      // Add user to approved_users table
+      const { error: insertError } = await supabase
+        .from('approved_users')
+        .insert([{
+          name: user.name,
+          phone: user.phone,
+          password: user.password,
+          role: user.role
+        }]);
+
+      if (insertError) {
+        console.error('Error inserting approved user:', insertError);
+        toast({
+          title: "خطأ",
+          description: "فشل في قبول الطلب",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('registration_requests')
+        .update({ 
+          status: 'approved',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (updateError) {
+        console.error('Error updating request status:', updateError);
+        toast({
+          title: "خطأ",
+          description: "فشل في تحديث حالة الطلب",
+          variant: "destructive"
+        });
+        return;
+      }
+
       await loadData(); // Refresh data
       
       toast({
         title: "تم قبول الطلب",
-        description: `تم قبول طلب ${user?.name} بنجاح`,
+        description: `تم قبول طلب ${user.name} بنجاح`,
       });
-    } else {
+    } catch (error) {
+      console.error('Error approving user:', error);
       toast({
         title: "خطأ",
         description: "فشل في قبول الطلب",
@@ -55,10 +163,27 @@ const AccountManagement = () => {
   };
 
   const handleReject = async (requestId: string) => {
-    const user = registrationRequests.find(req => req.id === requestId);
-    const success = await supabaseDB.updateUserStatus(requestId, 'rejected');
-    
-    if (success) {
+    try {
+      const user = registrationRequests.find(req => req.id === requestId);
+      
+      const { error } = await supabase
+        .from('registration_requests')
+        .update({ 
+          status: 'rejected',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error rejecting request:', error);
+        toast({
+          title: "خطأ",
+          description: "فشل في رفض الطلب",
+          variant: "destructive"
+        });
+        return;
+      }
+
       await loadData(); // Refresh data
       
       toast({
@@ -66,7 +191,8 @@ const AccountManagement = () => {
         description: `تم رفض طلب ${user?.name} بنجاح`,
         variant: "destructive"
       });
-    } else {
+    } catch (error) {
+      console.error('Error rejecting user:', error);
       toast({
         title: "خطأ",
         description: "فشل في رفض الطلب",
@@ -76,10 +202,24 @@ const AccountManagement = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const user = approvedUsers.find(u => u.id === userId);
-    const success = await supabaseDB.deleteUser(userId);
-    
-    if (success) {
+    try {
+      const user = approvedUsers.find(u => u.id === userId);
+      
+      const { error } = await supabase
+        .from('approved_users')
+        .delete()
+        .eq('id', userId);
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast({
+          title: "خطأ",
+          description: "فشل في حذف المستخدم",
+          variant: "destructive"
+        });
+        return;
+      }
+
       await loadData(); // Refresh data
       
       toast({
@@ -87,7 +227,8 @@ const AccountManagement = () => {
         description: `تم حذف ${user?.name} من النظام`,
         variant: "destructive"
       });
-    } else {
+    } catch (error) {
+      console.error('Error deleting user:', error);
       toast({
         title: "خطأ",
         description: "فشل في حذف المستخدم",
@@ -200,7 +341,9 @@ const AccountManagement = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {pendingRequests.length === 0 ? (
+              {loading ? (
+                <p className="text-center text-gray-500 py-8">جاري تحميل البيانات...</p>
+              ) : pendingRequests.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">لا توجد طلبات معلقة حالياً</p>
               ) : (
                 <Table>
@@ -257,7 +400,9 @@ const AccountManagement = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {approvedUsers.length === 0 ? (
+              {loading ? (
+                <p className="text-center text-gray-500 py-8">جاري تحميل البيانات...</p>
+              ) : approvedUsers.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">لا يوجد مستخدمين مقبولين حالياً</p>
               ) : (
                 <Table>
@@ -305,7 +450,9 @@ const AccountManagement = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {registrationRequests.length === 0 ? (
+            {loading ? (
+              <p className="text-center text-gray-500 py-8">جاري تحميل البيانات...</p>
+            ) : registrationRequests.length === 0 ? (
               <p className="text-center text-gray-500 py-8">لا توجد طلبات حالياً</p>
             ) : (
               <Table>
