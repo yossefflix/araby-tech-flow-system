@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,43 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 import { Upload, Camera, FileText, ArrowDown, CheckCircle, Save, X } from "lucide-react";
-
-interface WorkOrder {
-  id: string;
-  customerName: string;
-  address: string;
-  phone?: string;
-  customerComplaint: string;
-  propertyNumber?: string;
-  sapNumber?: string;
-  bookingDate?: string;
-  acType?: string;
-  assignedTechnician?: string;
-  status: string;
-}
+import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 
 interface WorkReport {
   orderId: string;
-  // Equipment Details
   acType: string;
   equipmentModel1: string;
   equipmentSerial1: string;
   equipmentModel2: string;
   equipmentSerial2: string;
   warrantyStatus: string;
-  
-  // Work Details
   workDescription: string;
   partsUsed: string;
   recommendations: string;
   customerSignature: string;
-  
-  // Media uploads - storing as file names/descriptions since we can't store actual files
   photos: { name: string; size: number }[];
   videos: { name: string; size: number }[];
-  
-  // Metadata
-  submittedAt: string;
   technicianName: string;
 }
 
@@ -52,46 +32,70 @@ const WorkOrderForm = () => {
   const { id } = useParams();
   const { toast } = useToast();
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
-    // Equipment Details
     acType: '',
     equipmentModel1: '',
     equipmentSerial1: '',
     equipmentModel2: '',
     equipmentSerial2: '',
     warrantyStatus: '',
-    
-    // Work Details
     workDescription: '',
     partsUsed: '',
     recommendations: '',
     customerSignature: '',
-    
-    // Media uploads
     photos: [] as File[],
     videos: [] as File[]
   });
 
   useEffect(() => {
-    // Load work order data
     if (id) {
-      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-      const currentOrder = orders.find((order: WorkOrder) => order.id === id);
-      if (currentOrder) {
-        setWorkOrder(currentOrder);
+      loadWorkOrder();
+    }
+  }, [id]);
+
+  const loadWorkOrder = async () => {
+    try {
+      if (!id) return;
+
+      // Load work order data from Supabase
+      const order = await supabaseDB.getWorkOrder(id);
+      if (order) {
+        setWorkOrder(order);
         // Pre-fill AC type if it exists in the work order
-        if (currentOrder.acType) {
+        if (order.acType) {
           setFormData(prev => ({
             ...prev,
-            acType: currentOrder.acType
+            acType: order.acType
           }));
         }
       }
 
-      // Load saved form data if exists
+      // Check if there's an existing work report
+      const existingReport = await supabaseDB.getWorkReport(id);
+      if (existingReport) {
+        setFormData(prev => ({
+          ...prev,
+          acType: existingReport.acType || '',
+          equipmentModel1: existingReport.equipmentModel1 || '',
+          equipmentSerial1: existingReport.equipmentSerial1 || '',
+          equipmentModel2: existingReport.equipmentModel2 || '',
+          equipmentSerial2: existingReport.equipmentSerial2 || '',
+          warrantyStatus: existingReport.warrantyStatus || '',
+          workDescription: existingReport.workDescription || '',
+          partsUsed: existingReport.partsUsed || '',
+          recommendations: existingReport.recommendations || '',
+          customerSignature: existingReport.customerSignature || '',
+          photos: [], // Reset file arrays as they can't be restored
+          videos: []
+        }));
+      }
+
+      // Load saved form data from localStorage as backup
       const savedFormData = localStorage.getItem(`workOrderForm_${id}`);
-      if (savedFormData) {
+      if (savedFormData && !existingReport) {
         const parsedData = JSON.parse(savedFormData);
         setFormData(prev => ({
           ...prev,
@@ -100,8 +104,12 @@ const WorkOrderForm = () => {
           videos: []
         }));
       }
+    } catch (error) {
+      console.error('Error loading work order:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [id]);
+  };
 
   const handleFileUpload = (type: 'photos' | 'videos', files: FileList | null) => {
     if (files) {
@@ -127,7 +135,7 @@ const WorkOrderForm = () => {
 
   const handleSave = () => {
     if (id) {
-      // Save form data to localStorage
+      // Save form data to localStorage as backup
       const dataToSave = {
         ...formData,
         photos: [], // Don't save files
@@ -137,12 +145,12 @@ const WorkOrderForm = () => {
       
       toast({
         title: "تم حفظ البيانات",
-        description: "تم حفظ بيانات النموذج بنجاح",
+        description: "تم حفظ بيانات النموذج محلياً",
       });
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Only check for essential fields
     if (!formData.workDescription.trim()) {
       toast({
@@ -153,10 +161,14 @@ const WorkOrderForm = () => {
       return;
     }
 
-    if (id && workOrder) {
+    if (!id || !workOrder) return;
+
+    setSubmitting(true);
+
+    try {
       // Create work report
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      const workReport: WorkReport = {
+      const workReport: Omit<WorkReport, 'id' | 'submittedAt'> = {
         orderId: id,
         acType: formData.acType,
         equipmentModel1: formData.equipmentModel1,
@@ -170,45 +182,68 @@ const WorkOrderForm = () => {
         customerSignature: formData.customerSignature,
         photos: formData.photos.map(file => ({ name: file.name, size: file.size })),
         videos: formData.videos.map(file => ({ name: file.name, size: file.size })),
-        submittedAt: new Date().toISOString(),
         technicianName: currentUser.name || 'فني غير محدد'
       };
 
-      // Save work report
-      const existingReports = JSON.parse(localStorage.getItem('workReports') || '[]');
-      const reportIndex = existingReports.findIndex((report: WorkReport) => report.orderId === id);
+      // Save work report to Supabase
+      const reportSuccess = await supabaseDB.addWorkReport(workReport);
       
-      if (reportIndex >= 0) {
-        existingReports[reportIndex] = workReport;
+      if (reportSuccess) {
+        // Update work order status to completed
+        const statusSuccess = await supabaseDB.updateWorkOrderStatus(id, 'completed');
+        
+        if (statusSuccess) {
+          // Clear saved form data after successful submission
+          localStorage.removeItem(`workOrderForm_${id}`);
+          
+          toast({
+            title: "تم إرسال التقرير بنجاح",
+            description: "تم إرسال تقرير العمل إلى قاعدة البيانات",
+          });
+        } else {
+          toast({
+            title: "تحذير",
+            description: "تم حفظ التقرير ولكن لم يتم تحديث حالة الطلب",
+            variant: "destructive"
+          });
+        }
       } else {
-        existingReports.push(workReport);
+        toast({
+          title: "خطأ",
+          description: "فشل في إرسال التقرير. يرجى المحاولة مرة أخرى",
+          variant: "destructive"
+        });
       }
-      
-      localStorage.setItem('workReports', JSON.stringify(existingReports));
-
-      // Update work order status to completed
-      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-      const orderIndex = orders.findIndex((order: WorkOrder) => order.id === id);
-      if (orderIndex >= 0) {
-        orders[orderIndex].status = 'completed';
-        localStorage.setItem('workOrders', JSON.stringify(orders));
-      }
-
-      // Clear saved form data after successful submission
-      localStorage.removeItem(`workOrderForm_${id}`);
+    } catch (error) {
+      console.error('Error submitting work report:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إرسال التقرير",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
     }
-
-    toast({
-      title: "تم إرسال التقرير بنجاح",
-      description: "تم إرسال تقرير العمل إلى الكول سنتر",
-    });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-elaraby-gray flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">جاري تحميل بيانات الطلب...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!workOrder) {
     return (
       <div className="min-h-screen bg-elaraby-gray flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-600">جاري تحميل بيانات الطلب...</p>
+          <p className="text-lg text-gray-600">لم يتم العثور على الطلب</p>
+          <Link to="/technician">
+            <Button className="mt-4">العودة لمهامي</Button>
+          </Link>
         </div>
       </div>
     );
@@ -226,11 +261,11 @@ const WorkOrderForm = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-elaraby-blue">نموذج العمل</h1>
-                <p className="text-gray-600">طلب رقم: #{id}</p>
+                <p className="text-gray-600">طلب رقم: #{id?.slice(0, 8)}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSave} variant="outline">
+              <Button onClick={handleSave} variant="outline" disabled={submitting}>
                 <Save className="h-4 w-4 ml-2" />
                 حفظ البيانات
               </Button>
@@ -518,11 +553,15 @@ const WorkOrderForm = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex gap-4">
-                <Button onClick={handleSubmit} className="flex-1 bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={handleSubmit} 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={submitting}
+                >
                   <CheckCircle className="h-5 w-5 ml-2" />
-                  إرسال التقرير إلى الكول سنتر
+                  {submitting ? 'جاري الإرسال...' : 'إرسال التقرير إلى الكول سنتر'}
                 </Button>
-                <Button onClick={handleSave} variant="outline">
+                <Button onClick={handleSave} variant="outline" disabled={submitting}>
                   <Save className="h-4 w-4 ml-2" />
                   حفظ
                 </Button>

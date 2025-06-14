@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Plus, ArrowDown, User, FileText } from "lucide-react";
 import { supabaseDB } from "@/utils/supabaseDatabase";
-import { useEffect } from "react";
 
 const CallCenterWorkOrder = () => {
   const { toast } = useToast();
   const [technicians, setTechnicians] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     orderNumber: '',
     customerName: '',
@@ -24,7 +24,8 @@ const CallCenterWorkOrder = () => {
     bookingDate: '',
     callCenterNotes: '',
     sapNumber: '',
-    assignedTechnician: ''
+    assignedTechnician: '',
+    phone: ''
   });
 
   useEffect(() => {
@@ -56,7 +57,7 @@ const CallCenterWorkOrder = () => {
     setFormData({...formData, orderNumber});
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.orderNumber || !formData.customerName || !formData.customerComplaint || !formData.assignedTechnician) {
       toast({
         title: "خطأ",
@@ -66,43 +67,69 @@ const CallCenterWorkOrder = () => {
       return;
     }
 
-    // Get current user
-    const currentUserStr = localStorage.getItem('currentUser');
-    const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+    setLoading(true);
 
-    // Create work order
-    const workOrder = {
-      id: formData.orderNumber,
-      ...formData,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser?.name || 'Unknown'
-    };
+    try {
+      // Get current user
+      const currentUserStr = localStorage.getItem('currentUser');
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
 
-    console.log('Creating work order:', workOrder);
+      // Create work order object
+      const workOrderData = {
+        customerName: formData.customerName,
+        phone: formData.phone,
+        address: formData.address,
+        propertyNumber: formData.propertyNumber,
+        customerComplaint: formData.customerComplaint,
+        bookingDate: formData.bookingDate,
+        callCenterNotes: formData.callCenterNotes,
+        sapNumber: formData.sapNumber,
+        assignedTechnician: formData.assignedTechnician,
+        status: 'pending',
+        createdBy: currentUser?.name || 'Unknown'
+      };
 
-    // Save to localStorage (in a real app, this would go to Supabase work_orders table)
-    const existingOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-    existingOrders.push(workOrder);
-    localStorage.setItem('workOrders', JSON.stringify(existingOrders));
+      console.log('Creating work order in Supabase:', workOrderData);
 
-    toast({
-      title: "تم إنشاء الطلب بنجاح",
-      description: `تم إنشاء طلب رقم: ${formData.orderNumber}`,
-    });
+      // Save to Supabase
+      const orderId = await supabaseDB.addWorkOrder(workOrderData);
 
-    // Reset form
-    setFormData({
-      orderNumber: '',
-      customerName: '',
-      propertyNumber: '',
-      address: '',
-      customerComplaint: '',
-      bookingDate: '',
-      callCenterNotes: '',
-      sapNumber: '',
-      assignedTechnician: ''
-    });
+      if (orderId) {
+        toast({
+          title: "تم إنشاء الطلب بنجاح",
+          description: `تم إنشاء طلب رقم: ${formData.orderNumber}`,
+        });
+
+        // Reset form
+        setFormData({
+          orderNumber: '',
+          customerName: '',
+          propertyNumber: '',
+          address: '',
+          customerComplaint: '',
+          bookingDate: '',
+          callCenterNotes: '',
+          sapNumber: '',
+          assignedTechnician: '',
+          phone: ''
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: "فشل في إنشاء الطلب. يرجى المحاولة مرة أخرى",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error creating work order:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إنشاء الطلب",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -143,7 +170,7 @@ const CallCenterWorkOrder = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Order Number */}
+              {/* Order Number & SAP Number */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="orderNumber">رقم الطلب *</Label>
@@ -190,6 +217,19 @@ const CallCenterWorkOrder = () => {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="phone">رقم الهاتف</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="أدخل رقم الهاتف"
+                    className="text-right"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="propertyNumber">رقم العقار</Label>
                   <Input
                     id="propertyNumber"
@@ -199,18 +239,16 @@ const CallCenterWorkOrder = () => {
                     className="text-right"
                   />
                 </div>
-              </div>
-
-              {/* Address */}
-              <div>
-                <Label htmlFor="address">العنوان</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  placeholder="أدخل العنوان بالتفصيل"
-                  className="text-right"
-                />
+                <div>
+                  <Label htmlFor="address">العنوان *</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    placeholder="أدخل العنوان بالتفصيل"
+                    className="text-right"
+                  />
+                </div>
               </div>
 
               {/* Customer Complaint */}
@@ -226,7 +264,7 @@ const CallCenterWorkOrder = () => {
                 />
               </div>
 
-              {/* Booking Date */}
+              {/* Booking Date & Assigned Technician */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="bookingDate">تاريخ الحجز</Label>
@@ -278,9 +316,13 @@ const CallCenterWorkOrder = () => {
 
               {/* Submit Button */}
               <div className="flex gap-4">
-                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={handleSubmit} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={loading}
+                >
                   <Plus className="h-4 w-4 ml-2" />
-                  إنشاء الطلب
+                  {loading ? 'جاري الإنشاء...' : 'إنشاء الطلب'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -293,8 +335,10 @@ const CallCenterWorkOrder = () => {
                     bookingDate: '',
                     callCenterNotes: '',
                     sapNumber: '',
-                    assignedTechnician: ''
+                    assignedTechnician: '',
+                    phone: ''
                   })}
+                  disabled={loading}
                 >
                   مسح الحقول
                 </Button>

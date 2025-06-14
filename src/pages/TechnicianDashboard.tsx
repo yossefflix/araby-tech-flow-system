@@ -5,42 +5,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { ClipboardList, User, CheckCircle, Clock, ArrowDown } from "lucide-react";
-
-interface WorkOrder {
-  id: string;
-  customerName: string;
-  address: string;
-  propertyNumber: string;
-  customerComplaint: string;
-  bookingDate: string;
-  assignedTechnician: string;
-  status: string;
-  createdAt: string;
-  phone?: string;
-  sapNumber?: string;
-}
+import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 
 const TechnicianDashboard = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get current logged-in user from localStorage (updated by Supabase login)
-    const userStr = localStorage.getItem('currentUser');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      setCurrentUser(user);
-      console.log('Current user:', user);
-
-      // Get work orders assigned to this technician
-      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-      const technicianOrders = orders.filter((order: WorkOrder) => 
-        order.assignedTechnician === user?.name
-      );
-      console.log('Technician orders:', technicianOrders);
-      setWorkOrders(technicianOrders);
-    }
+    loadUserAndOrders();
   }, []);
+
+  const loadUserAndOrders = async () => {
+    try {
+      // Get current logged-in user from localStorage
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        console.log('Current user:', user);
+
+        // Get work orders assigned to this technician from Supabase
+        const orders = await supabaseDB.getWorkOrdersByTechnician(user.name);
+        console.log('Technician orders from Supabase:', orders);
+        setWorkOrders(orders);
+      }
+    } catch (error) {
+      console.error('Error loading user and orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -60,23 +55,33 @@ const TechnicianDashboard = () => {
     }
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-    const updatedOrders = orders.map((order: WorkOrder) => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    localStorage.setItem('workOrders', JSON.stringify(updatedOrders));
-    
-    // Update local state
-    const technicianOrders = updatedOrders.filter((order: WorkOrder) => 
-      order.assignedTechnician === currentUser?.name
-    );
-    setWorkOrders(technicianOrders);
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const success = await supabaseDB.updateWorkOrderStatus(orderId, newStatus);
+      if (success) {
+        // Reload orders after update
+        await loadUserAndOrders();
+      } else {
+        console.error('Failed to update order status');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-elaraby-gray flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-elaraby-gray">
@@ -180,7 +185,7 @@ const TechnicianDashboard = () => {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-semibold text-elaraby-blue">#{order.id}</h4>
+                          <h4 className="font-semibold text-elaraby-blue">#{order.id.slice(0, 8)}</h4>
                           <p className="text-lg font-medium">{order.customerName}</p>
                         </div>
                         <div className="flex gap-2">
