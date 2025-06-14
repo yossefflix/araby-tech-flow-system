@@ -179,7 +179,7 @@ const CallCenterDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <Link to="/call-center-work-order">
               <CardContent className="p-6">
@@ -208,6 +208,22 @@ const CallCenterDashboard = () => {
                 </div>
               </div>
             </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Link to="/work-reports">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  <div className="bg-purple-600 text-white p-3 rounded-lg">
+                    <CheckCircle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-purple-600">تقارير العمل المكتملة</h3>
+                    <p className="text-gray-600">عرض تقارير الأعمال والملفات المرفقة</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Link>
           </Card>
         </div>
 

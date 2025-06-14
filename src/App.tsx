@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import CallCenterRegister from "./pages/CallCenterRegister";
 import CallCenterLogin from "./pages/CallCenterLogin";
 import AccountManagement from "./pages/AccountManagement";
+import WorkReports from "./pages/WorkReports";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/technician" element={<TechnicianDashboard />} />
           <Route path="/work-order/:id" element={<WorkOrderForm />} />
           <Route path="/call-center" element={<CallCenterDashboard />} />
+          <Route path="/work-reports" element={<WorkReports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
