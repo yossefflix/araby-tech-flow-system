@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Plus, ArrowDown, User, FileText } from "lucide-react";
-import { localDB } from "@/utils/localDatabase";
+import { supabaseDB } from "@/utils/supabaseDatabase";
 import { useEffect } from "react";
 
 const CallCenterWorkOrder = () => {
@@ -30,12 +31,14 @@ const CallCenterWorkOrder = () => {
     loadTechnicians();
   }, []);
 
-  // Get approved technicians
+  // Get approved technicians from Supabase
   const loadTechnicians = async () => {
-    const requests = await localDB.getRegistrationRequests();
-    const approvedTechnicians = requests.filter(user => 
-      user.role === 'technician' && user.status === 'approved'
+    console.log('Loading technicians from Supabase...');
+    const approvedUsers = await supabaseDB.getApprovedUsers();
+    const approvedTechnicians = approvedUsers.filter(user => 
+      user.role === 'technician'
     );
+    console.log('Approved technicians:', approvedTechnicians);
     setTechnicians(approvedTechnicians);
   };
 
@@ -63,16 +66,22 @@ const CallCenterWorkOrder = () => {
       return;
     }
 
+    // Get current user
+    const currentUserStr = localStorage.getItem('currentUser');
+    const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+
     // Create work order
     const workOrder = {
       id: formData.orderNumber,
       ...formData,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      createdBy: localDB.getCurrentUser()?.name || 'Unknown'
+      createdBy: currentUser?.name || 'Unknown'
     };
 
-    // Save to localStorage (in a real app, this would go to a database)
+    console.log('Creating work order:', workOrder);
+
+    // Save to localStorage (in a real app, this would go to Supabase work_orders table)
     const existingOrders = JSON.parse(localStorage.getItem('workOrders') || '[]');
     existingOrders.push(workOrder);
     localStorage.setItem('workOrders', JSON.stringify(existingOrders));

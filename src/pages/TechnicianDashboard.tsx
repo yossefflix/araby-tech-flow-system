@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { ClipboardList, User, CheckCircle, Clock, ArrowDown } from "lucide-react";
-import { localDB } from "@/utils/localDatabase";
 
 interface WorkOrder {
   id: string;
@@ -26,16 +25,21 @@ const TechnicianDashboard = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    // Get current logged-in user
-    const user = localDB.getCurrentUser();
-    setCurrentUser(user);
+    // Get current logged-in user from localStorage (updated by Supabase login)
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setCurrentUser(user);
+      console.log('Current user:', user);
 
-    // Get work orders assigned to this technician
-    const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
-    const technicianOrders = orders.filter((order: WorkOrder) => 
-      order.assignedTechnician === user?.name
-    );
-    setWorkOrders(technicianOrders);
+      // Get work orders assigned to this technician
+      const orders = JSON.parse(localStorage.getItem('workOrders') || '[]');
+      const technicianOrders = orders.filter((order: WorkOrder) => 
+        order.assignedTechnician === user?.name
+      );
+      console.log('Technician orders:', technicianOrders);
+      setWorkOrders(technicianOrders);
+    }
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -70,6 +74,10 @@ const TechnicianDashboard = () => {
     setWorkOrders(technicianOrders);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+  };
+
   return (
     <div className="min-h-screen bg-elaraby-gray">
       {/* Header */}
@@ -88,7 +96,7 @@ const TechnicianDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <Link to="/technician-login">
+              <Link to="/technician-login" onClick={handleLogout}>
                 <Button variant="outline">تسجيل الخروج</Button>
               </Link>
               <Link to="/">

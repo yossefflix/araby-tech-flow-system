@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { Headphones, ArrowDown } from "lucide-react";
-import { localDB } from "@/utils/localDatabase";
+import { supabaseDB } from "@/utils/supabaseDatabase";
 
 const CallCenterLogin = () => {
   const { toast } = useToast();
@@ -26,12 +27,16 @@ const CallCenterLogin = () => {
       return;
     }
 
-    // Authenticate user using local database
-    const authenticatedUser = await localDB.authenticateUser(credentials.phone, credentials.password);
+    console.log('Attempting call center login with:', credentials.phone);
+
+    // Authenticate user using Supabase
+    const authenticatedUser = await supabaseDB.validateLogin(credentials.phone, credentials.password);
     
     if (authenticatedUser && authenticatedUser.role === 'call_center') {
-      // Set current user session
-      localDB.setCurrentUser(authenticatedUser);
+      console.log('Call center login successful:', authenticatedUser);
+      
+      // Store user session in localStorage for app state
+      localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -40,6 +45,7 @@ const CallCenterLogin = () => {
       
       navigate("/call-center");
     } else {
+      console.log('Call center login failed');
       toast({
         title: "خطأ في تسجيل الدخول",
         description: "رقم الهاتف أو كلمة المرور غير صحيحة، أو أن حسابك غير مقبول بعد",
