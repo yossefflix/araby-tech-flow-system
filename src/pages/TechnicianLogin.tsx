@@ -36,16 +36,26 @@ const TechnicianLogin = () => {
       const { user, error } = await authUtils.loginUser(credentials.phone, credentials.password);
       
       if (error || !user) {
+        console.log('Login failed:', error);
         toast({
           title: "خطأ في تسجيل الدخول",
           description: error || "فشل في تسجيل الدخول",
           variant: "destructive"
         });
-        setLoading(false);
         return;
       }
 
       console.log('Login successful for user:', user);
+      
+      // Check if user is technician
+      if (user.role !== 'technician' && user.role !== 'admin') {
+        toast({
+          title: "خطأ في الصلاحيات",
+          description: "هذا الحساب ليس مخصص للفنيين",
+          variant: "destructive"
+        });
+        return;
+      }
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -54,11 +64,9 @@ const TechnicianLogin = () => {
       
       // Navigate based on role
       if (user.role === 'admin') {
-        window.location.href = "/admin";
-      } else if (user.role === 'call_center') {
-        window.location.href = "/call-center";
+        navigate('/admin');
       } else {
-        window.location.href = "/technician";
+        navigate('/technician');
       }
     } catch (error) {
       console.error('Login error:', error);

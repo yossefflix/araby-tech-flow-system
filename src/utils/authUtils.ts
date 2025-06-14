@@ -31,16 +31,6 @@ export const authUtils = {
     try {
       console.log('Attempting login for phone:', phone);
       
-      // Clean up any existing auth state first
-      this.cleanupAuthState();
-      
-      // Try to sign out any existing session
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        console.log('No existing session to sign out');
-      }
-
       // Find user in approved_users table
       const { data: userData, error: userError } = await supabase
         .from('approved_users')
@@ -59,51 +49,16 @@ export const authUtils = {
 
       console.log('User found in approved_users:', userData);
 
-      // Create a simple email for auth
-      const tempEmail = `${userData.phone}@company.local`;
-      
-      // Try to sign in
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: tempEmail,
-        password: password
-      });
-
-      if (authError) {
-        console.log('Auth sign in failed, trying to create user:', authError);
-        
-        // If sign in fails, create the user
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: tempEmail,
-          password: password,
-          options: {
-            data: {
-              name: userData.name,
-              phone: userData.phone,
-              role: userData.role,
-              user_id: userData.id
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          return { 
-            user: null, 
-            error: 'حدث خطأ في تسجيل الدخول' 
-          };
-        }
-        
-        console.log('User created successfully:', signUpData);
-      } else {
-        console.log('User signed in successfully:', authData);
-      }
-
       const currentUser: CurrentUser = {
         id: userData.id,
         name: userData.name,
         phone: userData.phone,
         role: userData.role as 'admin' | 'technician' | 'call_center'
       };
+
+      // Store user data in localStorage for session management
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      console.log('User logged in successfully:', currentUser);
 
       return { user: currentUser, error: null };
 
@@ -119,42 +74,17 @@ export const authUtils = {
   // Get current user
   async getCurrentUser(): Promise<CurrentUser | null> {
     try {
-      console.log('Getting current user session...');
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Getting current user...');
       
-      if (!session?.user) {
-        console.log('No session or user found');
-        return null;
+      // Get user from localStorage
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        console.log('User found in localStorage:', user);
+        return user;
       }
 
-      console.log('Session user found:', session.user);
-
-      // Get user details from approved_users table by phone
-      const email = session.user.email;
-      if (email && email.includes('@company.local')) {
-        const phone = email.replace('@company.local', '');
-        console.log('Trying to find user by phone:', phone);
-        
-        const { data: userData, error } = await supabase
-          .from('approved_users')
-          .select('*')
-          .eq('phone', phone)
-          .single();
-          
-        if (error || !userData) {
-          console.error('Error fetching user by phone:', error);
-          return null;
-        }
-        
-        console.log('User found by phone:', userData);
-        return {
-          id: userData.id,
-          name: userData.name,
-          phone: userData.phone,
-          role: userData.role as 'admin' | 'technician' | 'call_center'
-        };
-      }
-
+      console.log('No user found in localStorage');
       return null;
     } catch (error) {
       console.error('Error getting current user:', error);
@@ -167,7 +97,7 @@ export const authUtils = {
     try {
       console.log('Signing out user...');
       this.cleanupAuthState();
-      await supabase.auth.signOut({ scope: 'global' });
+      localStorage.removeItem('currentUser');
       console.log('User signed out successfully');
       // Force page refresh for clean state
       window.location.href = '/';
@@ -181,8 +111,8 @@ export const authUtils = {
   // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const isAuth = !!session?.user;
+      const user = await this.getCurrentUser();
+      const isAuth = !!user;
       console.log('Authentication check:', isAuth);
       return isAuth;
     } catch (error) {

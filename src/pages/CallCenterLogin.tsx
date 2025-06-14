@@ -36,34 +36,38 @@ const CallCenterLogin = () => {
       const { user, error } = await authUtils.loginUser(credentials.phone, credentials.password);
       
       if (error || !user) {
+        console.log('Login failed:', error);
         toast({
           title: "خطأ في تسجيل الدخول",
           description: error || "فشل في تسجيل الدخول",
           variant: "destructive"
         });
-        setLoading(false);
         return;
       }
 
-      // Check if user is call center
-      if (user.role !== 'call_center') {
+      console.log('Login successful for user:', user);
+
+      // Check if user is call center or admin
+      if (user.role !== 'call_center' && user.role !== 'admin') {
         toast({
           title: "خطأ في الصلاحيات",
           description: "هذا الحساب ليس مخصص للكول سنتر",
           variant: "destructive"
         });
-        setLoading(false);
         return;
       }
-
-      console.log('Call center login successful:', user);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
         description: `مرحباً بك ${user.name}`,
       });
       
-      window.location.href = "/call-center";
+      // Navigate based on role
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/call-center');
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast({
