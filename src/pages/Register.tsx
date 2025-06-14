@@ -18,7 +18,7 @@ const Register = () => {
     confirmPassword: ''
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validation
     if (!formData.name || !formData.phone || !formData.password || !formData.confirmPassword) {
       toast({
@@ -57,7 +57,8 @@ const Register = () => {
     }
 
     // Check if phone number is already registered
-    if (localDB.isPhoneRegistered(formData.phone)) {
+    const phoneRegistered = await localDB.isPhoneRegistered(formData.phone);
+    if (phoneRegistered) {
       toast({
         title: "خطأ",
         description: "رقم الهاتف مسجل مسبقاً في النظام",
@@ -68,7 +69,7 @@ const Register = () => {
 
     // Add registration request using local database
     try {
-      localDB.addRegistrationRequest({
+      await localDB.addRegistrationRequest({
         name: formData.name,
         phone: formData.phone,
         role: 'technician',
