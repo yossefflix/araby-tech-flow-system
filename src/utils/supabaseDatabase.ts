@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -529,7 +530,7 @@ export const supabaseDB = {
       const { error } = await supabase
         .from('work_reports')
         .insert({
-          order_id: workReport.orderId, // تصحيح الاسم
+          order_id: workReport.orderId, // Fixed: use correct column name
           ac_type: workReport.acType,
           equipment_model1: workReport.equipmentModel1,
           equipment_serial1: workReport.equipmentSerial1,
