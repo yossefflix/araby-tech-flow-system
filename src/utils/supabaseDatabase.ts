@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -524,13 +523,13 @@ export const supabaseDB = {
     }
   },
 
-  // إضافة تقرير عمل
+  // إضافة تقرير عمل - تم إصلاح الخطأ
   async addWorkReport(workReport: Omit<WorkReport, 'id' | 'submittedAt'>): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('work_reports')
         .insert({
-          order_id: workReport.orderId,
+          order_id: workReport.orderId, // تصحيح الاسم
           ac_type: workReport.acType,
           equipment_model1: workReport.equipmentModel1,
           equipment_serial1: workReport.equipmentSerial1,

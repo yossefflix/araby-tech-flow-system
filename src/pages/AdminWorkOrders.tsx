@@ -4,34 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Clock, CheckCircle, User, Calendar } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, ClipboardList, Clock, CheckCircle, Phone, MapPin, Calendar, User } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
-import { authUtils, CurrentUser } from "@/utils/authUtils";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminWorkOrders = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadUserAndOrders();
+    loadOrders();
   }, []);
 
-  const loadUserAndOrders = async () => {
+  const loadOrders = async () => {
     try {
-      const user = await authUtils.getCurrentUser();
-      
-      if (!user || user.role !== 'admin') {
-        navigate('/admin');
-        return;
-      }
-
-      setCurrentUser(user);
-
       const orders = await supabaseDB.getAllWorkOrders();
       setWorkOrders(orders);
     } catch (error) {
@@ -152,39 +140,65 @@ const AdminWorkOrders = () => {
             {pendingOrders.length === 0 ? (
               <p className="text-center text-gray-500 py-8">لا توجد طلبات معلقة</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>اسم العميل</TableHead>
-                    <TableHead>العنوان</TableHead>
-                    <TableHead>الهاتف</TableHead>
-                    <TableHead>الفني المخصص</TableHead>
-                    <TableHead>تاريخ الحجز</TableHead>
-                    <TableHead>الحالة</TableHead>
-                    <TableHead>تاريخ الإنشاء</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.customerName}</TableCell>
-                      <TableCell>{order.address}</TableCell>
-                      <TableCell>{order.phone || '-'}</TableCell>
-                      <TableCell>{order.assignedTechnician || 'غير محدد'}</TableCell>
-                      <TableCell>
-                        {order.bookingDate 
-                          ? new Date(order.bookingDate).toLocaleDateString('ar-EG')
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>{getStatusBadge(order.status)}</TableCell>
-                      <TableCell>
-                        {new Date(order.createdAt).toLocaleDateString('ar-EG')}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>رقم الطلب</TableHead>
+                      <TableHead>اسم العميل</TableHead>
+                      <TableHead>العنوان</TableHead>
+                      <TableHead>الهاتف</TableHead>
+                      <TableHead>رقم العقار</TableHead>
+                      <TableHead>الشكوى</TableHead>
+                      <TableHead>الفني المخصص</TableHead>
+                      <TableHead>تاريخ الحجز</TableHead>
+                      <TableHead>ملاحظات الكول سنتر</TableHead>
+                      <TableHead>رقم SAP</TableHead>
+                      <TableHead>الحالة</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
+                        <TableCell className="font-medium">{order.customerName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            {order.address}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            {order.phone || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{order.propertyNumber || '-'}</TableCell>
+                        <TableCell className="max-w-xs truncate">{order.customerComplaint || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4 text-gray-500" />
+                            {order.assignedTechnician || 'غير محدد'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            {order.bookingDate 
+                              ? new Date(order.bookingDate).toLocaleDateString('ar-EG')
+                              : '-'
+                            }
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{order.callCenterNotes || '-'}</TableCell>
+                        <TableCell>{order.sapNumber || '-'}</TableCell>
+                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -204,39 +218,72 @@ const AdminWorkOrders = () => {
             {completedOrders.length === 0 ? (
               <p className="text-center text-gray-500 py-8">لا توجد طلبات مكتملة</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>اسم العميل</TableHead>
-                    <TableHead>العنوان</TableHead>
-                    <TableHead>الهاتف</TableHead>
-                    <TableHead>الفني المنفذ</TableHead>
-                    <TableHead>تاريخ الحجز</TableHead>
-                    <TableHead>الحالة</TableHead>
-                    <TableHead>تاريخ الإكمال</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {completedOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.customerName}</TableCell>
-                      <TableCell>{order.address}</TableCell>
-                      <TableCell>{order.phone || '-'}</TableCell>
-                      <TableCell>{order.assignedTechnician || 'غير محدد'}</TableCell>
-                      <TableCell>
-                        {order.bookingDate 
-                          ? new Date(order.bookingDate).toLocaleDateString('ar-EG')
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>{getStatusBadge(order.status)}</TableCell>
-                      <TableCell>
-                        {new Date(order.updatedAt).toLocaleDateString('ar-EG')}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>رقم الطلب</TableHead>
+                      <TableHead>اسم العميل</TableHead>
+                      <TableHead>العنوان</TableHead>
+                      <TableHead>الهاتف</TableHead>
+                      <TableHead>رقم العقار</TableHead>
+                      <TableHead>الشكوى</TableHead>
+                      <TableHead>الفني المنفذ</TableHead>
+                      <TableHead>تاريخ الحجز</TableHead>
+                      <TableHead>ملاحظات الكول سنتر</TableHead>
+                      <TableHead>رقم SAP</TableHead>
+                      <TableHead>الحالة</TableHead>
+                      <TableHead>تاريخ الإكمال</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {completedOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
+                        <TableCell className="font-medium">{order.customerName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            {order.address}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            {order.phone || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{order.propertyNumber || '-'}</TableCell>
+                        <TableCell className="max-w-xs truncate">{order.customerComplaint || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4 text-gray-500" />
+                            {order.assignedTechnician || 'غير محدد'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            {order.bookingDate 
+                              ? new Date(order.bookingDate).toLocaleDateString('ar-EG')
+                              : '-'
+                            }
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{order.callCenterNotes || '-'}</TableCell>
+                        <TableCell>{order.sapNumber || '-'}</TableCell>
+                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            {new Date(order.updatedAt).toLocaleDateString('ar-EG')}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

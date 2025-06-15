@@ -4,34 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, User, Calendar, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, FileText, User, Calendar, Eye, Phone, MapPin } from "lucide-react";
 import { supabaseDB, WorkReport, WorkOrder } from "@/utils/supabaseDatabase";
-import { authUtils, CurrentUser } from "@/utils/authUtils";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminWorkReports = () => {
   const [workReports, setWorkReports] = useState<(WorkReport & { orderDetails?: WorkOrder })[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadUserAndReports();
+    loadReports();
   }, []);
 
-  const loadUserAndReports = async () => {
+  const loadReports = async () => {
     try {
-      const user = await authUtils.getCurrentUser();
-      
-      if (!user || user.role !== 'admin') {
-        navigate('/admin');
-        return;
-      }
-
-      setCurrentUser(user);
-
       const reports = await supabaseDB.getWorkReports();
       
       const reportsWithDetails = await Promise.all(
@@ -141,67 +129,99 @@ const AdminWorkReports = () => {
               تقارير العمل المكتملة
             </CardTitle>
             <CardDescription>
-              جميع التقارير المرفوعة من الفنيين
+              جميع التقارير المرفوعة من الفنيين مع تفاصيل الطلبات
             </CardDescription>
           </CardHeader>
           <CardContent>
             {workReports.length === 0 ? (
               <p className="text-center text-gray-500 py-8">لا توجد تقارير عمل بعد</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>رقم التقرير</TableHead>
-                    <TableHead>اسم العميل</TableHead>
-                    <TableHead>العنوان</TableHead>
-                    <TableHead>الفني المنفذ</TableHead>
-                    <TableHead>وصف العمل</TableHead>
-                    <TableHead>الصور</TableHead>
-                    <TableHead>الفيديوهات</TableHead>
-                    <TableHead>تاريخ الإرسال</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {workReports.map((report) => (
-                    <TableRow key={report.id}>
-                      <TableCell className="font-medium">
-                        #{report.id.slice(0, 8)}
-                      </TableCell>
-                      <TableCell>
-                        {report.orderDetails?.customerName || 'غير محدد'}
-                      </TableCell>
-                      <TableCell>
-                        {report.orderDetails?.address || 'غير محدد'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          {report.technicianName}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {report.workDescription}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                          {report.photos?.length || 0} صورة
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-purple-100 text-purple-800">
-                          {report.videos?.length || 0} فيديو
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(report.submittedAt).toLocaleDateString('ar-EG')}
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>رقم التقرير</TableHead>
+                      <TableHead>اسم العميل</TableHead>
+                      <TableHead>العنوان</TableHead>
+                      <TableHead>الهاتف</TableHead>
+                      <TableHead>رقم العقار</TableHead>
+                      <TableHead>الشكوى الأصلية</TableHead>
+                      <TableHead>الفني المنفذ</TableHead>
+                      <TableHead>نوع المكيف</TableHead>
+                      <TableHead>وصف العمل</TableHead>
+                      <TableHead>القطع المستخدمة</TableHead>
+                      <TableHead>التوصيات</TableHead>
+                      <TableHead>الصور</TableHead>
+                      <TableHead>الفيديوهات</TableHead>
+                      <TableHead>تاريخ الإرسال</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {workReports.map((report) => (
+                      <TableRow key={report.id}>
+                        <TableCell className="font-medium">
+                          #{report.id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {report.orderDetails?.customerName || 'غير محدد'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            {report.orderDetails?.address || 'غير محدد'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            {report.orderDetails?.phone || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {report.orderDetails?.propertyNumber || '-'}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {report.orderDetails?.customerComplaint || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {report.technicianName}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {report.acType || '-'}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {report.workDescription}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {report.partsUsed || '-'}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {report.recommendations || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                            {report.photos?.length || 0} صورة
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                            {report.videos?.length || 0} فيديو
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(report.submittedAt).toLocaleDateString('ar-EG')}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
