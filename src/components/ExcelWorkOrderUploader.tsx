@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, Loader2, User, Save, CheckCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, User, Send, CheckCircle, Trash2, RefreshCw } from "lucide-react";
 import { supabaseDB } from "@/utils/supabaseDatabase";
 import { authUtils } from "@/utils/authUtils";
 import * as XLSX from 'xlsx';
@@ -19,6 +19,7 @@ interface ExcelRow {
   sapNumber?: string;
   acType?: string;
   assignedTechnician?: string;
+  sent?: boolean;
 }
 
 interface Technician {
@@ -31,7 +32,7 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
   const [uploading, setUploading] = useState(false);
   const [parsedData, setParsedData] = useState<ExcelRow[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [sendingOrders, setSendingOrders] = useState<Record<number, boolean>>({});
   const { toast } = useToast();
 
   const loadTechnicians = async () => {
@@ -75,7 +76,8 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
                 customerComplaint: rowData[4]?.toString() || '',
                 bookingDate: rowData[5]?.toString() || '',
                 sapNumber: rowData[6]?.toString() || '',
-                acType: rowData[7]?.toString() || ''
+                acType: rowData[7]?.toString() || '',
+                sent: false
               };
               rows.push(row);
             }
@@ -129,7 +131,7 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
 
       toast({
         title: "تم تحليل الملف بنجاح",
-        description: `تم استخراج ${rows.length} طلب من الملف. يمكنك الآن تعيين الفنيين`,
+        description: `تم استخراج ${rows.length} طلب من الملف. يمكنك الآن تعيين الفنيين وإرسال كل طلب`,
       });
 
     } catch (error) {
@@ -151,63 +153,91 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
     setParsedData(updatedData);
   };
 
-  const saveAllOrders = async () => {
-    setSaving(true);
+  const sendSingleOrder = async (index: number) => {
+    const order = parsedData[index];
+    if (!order.assignedTechnician) {
+      toast({
+        title: "خطأ",
+        description: "يرجى اختيار فني قبل إرسال الطلب",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingOrders(prev => ({ ...prev, [index]: true }));
+    
     try {
       const currentUser = await authUtils.getCurrentUser();
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
 
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const row of parsedData) {
-        if (row.customerName && row.address) {
-          const success = await supabaseDB.addWorkOrder({
-            customerName: row.customerName,
-            phone: row.phone,
-            address: row.address,
-            propertyNumber: row.propertyNumber,
-            customerComplaint: row.customerComplaint,
-            bookingDate: row.bookingDate,
-            callCenterNotes: '',
-            sapNumber: row.sapNumber,
-            acType: row.acType,
-            assignedTechnician: row.assignedTechnician,
-            status: 'pending',
-            createdBy: currentUser.name
-          });
-
-          if (success) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } else {
-          errorCount++;
-        }
-      }
-
-      toast({
-        title: "تم حفظ الطلبات",
-        description: `تم إضافة ${successCount} طلب بنجاح${errorCount > 0 ? ` مع ${errorCount} خطأ` : ''}`,
+      const success = await supabaseDB.addWorkOrder({
+        customerName: order.customerName,
+        phone: order.phone,
+        address: order.address,
+        propertyNumber: order.propertyNumber,
+        customerComplaint: order.customerComplaint,
+        bookingDate: order.bookingDate,
+        callCenterNotes: '',
+        sapNumber: order.sapNumber,
+        acType: order.acType,
+        assignedTechnician: order.assignedTechnician,
+        status: 'pending',
+        createdBy: currentUser.name
       });
 
-      if (successCount > 0) {
-        setParsedData([]);
-        onUploadSuccess();
+      if (success) {
+        const updatedData = [...parsedData];
+        updatedData[index].sent = true;
+        setParsedData(updatedData);
+
+        toast({
+          title: "تم إرسال الطلب",
+          description: `تم إرسال طلب ${order.customerName} إلى ${order.assignedTechnician} بنجاح`,
+        });
+
+        // Check if all orders are sent
+        const allSent = updatedData.every(o => o.sent);
+        if (allSent) {
+          onUploadSuccess();
+        }
+      } else {
+        toast({
+          title: "خطأ في الإرسال",
+          description: "فشل في إرسال الطلب",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('Error saving orders:', error);
+      console.error('Error sending order:', error);
       toast({
-        title: "خطأ في الحفظ",
-        description: "فشل في حفظ الطلبات",
+        title: "خطأ في الإرسال",
+        description: "فشل في إرسال الطلب",
         variant: "destructive"
       });
     } finally {
-      setSaving(false);
+      setSendingOrders(prev => ({ ...prev, [index]: false }));
     }
+  };
+
+  const removeOrder = (index: number) => {
+    const updatedData = parsedData.filter((_, i) => i !== index);
+    setParsedData(updatedData);
+    
+    toast({
+      title: "تم حذف الطلب",
+      description: "تم حذف الطلب من القائمة",
+    });
+  };
+
+  const resetData = () => {
+    setParsedData([]);
+    setSendingOrders({});
+    toast({
+      title: "تم مسح البيانات",
+      description: "تم مسح جميع الطلبات المحملة",
+    });
   };
 
   return (
@@ -268,37 +298,59 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                توزيع الطلبات على الفنيين ({parsedData.length} طلب)
+                الطلبات المحملة ({parsedData.length} طلب)
               </CardTitle>
-              <Button 
-                onClick={saveAllOrders} 
-                disabled={saving}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                ) : (
-                  <Save className="h-4 w-4 ml-2" />
-                )}
-                حفظ جميع الطلبات
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={resetData}
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                >
+                  <RefreshCw className="h-4 w-4 ml-2" />
+                  مسح الكل
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {parsedData.map((order, index) => (
-                <Card key={index} className="border-r-4 border-r-blue-500">
+                <Card 
+                  key={index} 
+                  className={`border-r-4 transition-all ${
+                    order.sent 
+                      ? 'border-r-green-500 bg-green-50' 
+                      : 'border-r-blue-500'
+                  }`}
+                >
                   <CardContent className="p-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <h3 className="font-semibold text-lg text-blue-600">{order.customerName}</h3>
-                        <div className="text-sm space-y-1">
-                          <p><strong>الهاتف:</strong> {order.phone || 'غير محدد'}</p>
-                          <p><strong>العنوان:</strong> {order.address}</p>
-                          {order.propertyNumber && <p><strong>رقم العقار:</strong> {order.propertyNumber}</p>}
-                          {order.sapNumber && <p><strong>رقم SAP:</strong> {order.sapNumber}</p>}
-                          {order.acType && <p><strong>نوع التكييف:</strong> {order.acType}</p>}
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-lg text-blue-600">
+                            {order.customerName}
+                          </h3>
+                          {order.sent && (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="h-5 w-5" />
+                              <span className="text-sm font-medium">تم الإرسال</span>
+                            </div>
+                          )}
                         </div>
+                        
+                        <div className="grid md:grid-cols-2 gap-4 text-sm">
+                          <div className="space-y-1">
+                            <p><strong>الهاتف:</strong> {order.phone || 'غير محدد'}</p>
+                            <p><strong>العنوان:</strong> {order.address}</p>
+                            {order.propertyNumber && <p><strong>رقم العقار:</strong> {order.propertyNumber}</p>}
+                          </div>
+                          <div className="space-y-1">
+                            {order.sapNumber && <p><strong>رقم SAP:</strong> {order.sapNumber}</p>}
+                            {order.acType && <p><strong>نوع التكييف:</strong> {order.acType}</p>}
+                            {order.bookingDate && <p><strong>تاريخ الحجز:</strong> {order.bookingDate}</p>}
+                          </div>
+                        </div>
+                        
                         {order.customerComplaint && (
                           <div className="mt-2">
                             <p className="text-sm font-medium">شكوى العميل:</p>
@@ -307,34 +359,66 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
                         )}
                       </div>
                       
-                      <div className="flex items-center justify-center">
-                        <div className="w-full max-w-xs">
-                          <label className="block text-sm font-medium mb-2">اختيار الفني:</label>
-                          <Select 
-                            value={order.assignedTechnician || ''} 
-                            onValueChange={(value) => handleTechnicianAssignment(index, value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="اختر الفني" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {technicians.map((technician) => (
-                                <SelectItem key={technician.id} value={technician.name}>
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    {technician.name} - {technician.phone}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {order.assignedTechnician && (
-                            <div className="flex items-center gap-1 mt-2 text-green-600 text-sm">
-                              <CheckCircle className="h-4 w-4" />
-                              تم تعيين: {order.assignedTechnician}
+                      <div className="flex flex-col gap-3">
+                        {!order.sent ? (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium mb-2">اختيار الفني:</label>
+                              <Select 
+                                value={order.assignedTechnician || ''} 
+                                onValueChange={(value) => handleTechnicianAssignment(index, value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="اختر الفني" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {technicians.map((technician) => (
+                                    <SelectItem key={technician.id} value={technician.name}>
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4" />
+                                        {technician.name} - {technician.phone}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                          )}
-                        </div>
+                            
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={() => sendSingleOrder(index)}
+                                disabled={!order.assignedTechnician || sendingOrders[index]}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                              >
+                                {sendingOrders[index] ? (
+                                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                                ) : (
+                                  <Send className="h-4 w-4 ml-2" />
+                                )}
+                                إرسال الطلب
+                              </Button>
+                              
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeOrder(index)}
+                                className="text-red-600 border-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center space-y-2">
+                            <div className="flex items-center justify-center gap-2 text-green-600">
+                              <CheckCircle className="h-6 w-6" />
+                              <span className="font-medium">تم إرسال الطلب</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              تم إرسال الطلب إلى: <strong>{order.assignedTechnician}</strong>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
