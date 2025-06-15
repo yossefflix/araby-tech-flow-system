@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -284,9 +285,9 @@ export const supabaseDB = {
   // إضافة طلب صيانة جديد
   async addWorkOrder(workOrder: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('work_orders')
-        .insert([{
+        .insert({
           customer_name: workOrder.customerName,
           phone: workOrder.phone,
           address: workOrder.address,
@@ -299,7 +300,7 @@ export const supabaseDB = {
           ac_type: workOrder.acType,
           status: workOrder.status,
           created_by: workOrder.createdBy
-        }]);
+        });
 
       if (error) {
         console.error('Error adding work order:', error);
