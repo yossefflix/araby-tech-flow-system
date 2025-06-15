@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -619,6 +618,61 @@ export const supabaseDB = {
     } catch (error) {
       console.error('Error uploading Excel file:', error);
       return null;
+    }
+  },
+
+  // إضافة وظيفة لرفع ملفات Excel واستخراج طلبات الصيانة
+  async addBulkWorkOrders(orders: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<{ success: boolean; count: number }> {
+    try {
+      const ordersToInsert = orders.map(order => ({
+        customer_name: order.customerName,
+        phone: order.phone,
+        address: order.address,
+        property_number: order.propertyNumber,
+        customer_complaint: order.customerComplaint,
+        booking_date: order.bookingDate,
+        call_center_notes: order.callCenterNotes,
+        sap_number: order.sapNumber,
+        assigned_technician: order.assignedTechnician,
+        ac_type: order.acType,
+        status: order.status || 'pending',
+        created_by: order.createdBy
+      }));
+
+      const { data, error } = await supabase
+        .from('work_orders')
+        .insert(ordersToInsert)
+        .select();
+
+      if (error) {
+        console.error('Error adding bulk work orders:', error);
+        return { success: false, count: 0 };
+      }
+
+      return { success: true, count: data?.length || 0 };
+    } catch (error) {
+      console.error('Error adding bulk work orders:', error);
+      return { success: false, count: 0 };
+    }
+  },
+
+  // جلب أسماء الفنيين المعتمدين
+  async getTechnicians(): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('approved_users')
+        .select('name')
+        .eq('role', 'technician');
+
+      if (error) {
+        console.error('Error fetching technicians:', error);
+        return [];
+      }
+
+      return data?.map(item => item.name) || [];
+    } catch (error) {
+      console.error('Error fetching technicians:', error);
+      return [];
     }
   }
 };
