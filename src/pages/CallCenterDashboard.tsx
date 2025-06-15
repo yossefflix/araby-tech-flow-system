@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, FileText, ArrowDown, Headphones, User, Clock, CheckCircle } from "lucide-react";
+import { Plus, FileText, ArrowDown, Headphones, User, Clock, CheckCircle, Upload } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 import { authUtils, CurrentUser } from "@/utils/authUtils";
+import ExcelUploader from "@/components/ExcelUploader";
 
 const CallCenterDashboard = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showUploader, setShowUploader] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,6 +78,11 @@ const CallCenterDashboard = () => {
       case 'completed': return 'مكتمل';
       default: return status;
     }
+  };
+
+  const handleUploadSuccess = () => {
+    setShowUploader(false);
+    loadUserAndOrders();
   };
 
   if (loading) {
@@ -155,7 +162,7 @@ const CallCenterDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">قيد التنفيذ</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {workOrders.filter(o => o.status === 'in-progress').length}
+                    {workOrders.filter(o => o.status === 'in_progress').length}
                   </p>
                 </div>
                 <User className="h-8 w-8 text-blue-600" />
@@ -178,8 +185,15 @@ const CallCenterDashboard = () => {
           </Card>
         </div>
 
+        {/* Excel Uploader Section */}
+        {showUploader && (
+          <div className="mb-8">
+            <ExcelUploader onUploadSuccess={handleUploadSuccess} />
+          </div>
+        )}
+
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <Link to="/call-center-work-order">
               <CardContent className="p-6">
@@ -196,29 +210,48 @@ const CallCenterDashboard = () => {
             </Link>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card 
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setShowUploader(!showUploader)}
+          >
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 space-x-reverse">
-                <div className="bg-blue-600 text-white p-3 rounded-lg">
-                  <FileText className="h-6 w-6" />
+                <div className="bg-purple-600 text-white p-3 rounded-lg">
+                  <Upload className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-600">إدارة الطلبات</h3>
-                  <p className="text-gray-600">متابعة وإدارة جميع طلبات الصيانة</p>
+                  <h3 className="text-lg font-semibold text-purple-600">رفع ملف Excel</h3>
+                  <p className="text-gray-600">استيراد طلبات الصيانة من ملف Excel</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Link to="/call-center-orders-management">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  <div className="bg-blue-600 text-white p-3 rounded-lg">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-600">إدارة الطلبات</h3>
+                    <p className="text-gray-600">متابعة وإدارة جميع طلبات الصيانة</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <Link to="/work-reports">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 space-x-reverse">
-                  <div className="bg-purple-600 text-white p-3 rounded-lg">
+                  <div className="bg-orange-600 text-white p-3 rounded-lg">
                     <CheckCircle className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-purple-600">تقارير العمل المكتملة</h3>
+                    <h3 className="text-lg font-semibold text-orange-600">تقارير العمل المكتملة</h3>
                     <p className="text-gray-600">عرض تقارير الأعمال والملفات المرفقة</p>
                   </div>
                 </div>
@@ -244,12 +277,22 @@ const CallCenterDashboard = () => {
                 <div className="text-center text-gray-500 py-8">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>لا توجد طلبات صيانة بعد</p>
-                  <Link to="/call-center-work-order">
-                    <Button className="mt-4 bg-green-600 hover:bg-green-700">
-                      <Plus className="h-4 w-4 ml-2" />
-                      إضافة طلب جديد
+                  <div className="flex gap-4 justify-center mt-4">
+                    <Link to="/call-center-work-order">
+                      <Button className="bg-green-600 hover:bg-green-700">
+                        <Plus className="h-4 w-4 ml-2" />
+                        إضافة طلب جديد
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowUploader(true)}
+                      className="border-purple-600 text-purple-600 hover:bg-purple-50"
+                    >
+                      <Upload className="h-4 w-4 ml-2" />
+                      رفع ملف Excel
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               ) : (
                 workOrders.slice(0, 5).map((order) => (
