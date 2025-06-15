@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -654,17 +655,17 @@ export const supabaseDB = {
     try {
       const ordersToInsert = orders.map(order => ({
         customer_name: order.customerName,
-        phone: order.phone,
+        phone: order.phone || null,
         address: order.address,
-        property_number: order.propertyNumber,
-        customer_complaint: order.customerComplaint,
+        property_number: order.propertyNumber || null,
+        customer_complaint: order.customerComplaint || null,
         booking_date: formatDateForSupabase(order.bookingDate),
-        call_center_notes: order.callCenterNotes,
-        sap_number: order.sapNumber,
-        assigned_technician: order.assignedTechnician,
-        ac_type: order.acType,
+        call_center_notes: order.callCenterNotes || null,
+        sap_number: order.sapNumber || null,
+        assigned_technician: order.assignedTechnician || null,
+        ac_type: order.acType || null,
         status: order.status || 'pending',
-        created_by: order.createdBy
+        created_by: order.createdBy || null
       }));
 
       const { data, error } = await supabase

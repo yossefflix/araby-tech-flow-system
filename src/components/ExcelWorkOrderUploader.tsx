@@ -10,14 +10,15 @@ import { authUtils } from "@/utils/authUtils";
 import * as XLSX from 'xlsx';
 
 interface ExcelRow {
-  customerName: string;
-  phone?: string;
-  address: string;
-  propertyNumber?: string;
-  customerComplaint?: string;
-  bookingDate?: string;
-  sapNumber?: string;
-  acType?: string;
+  orderNumber: string; // رقم الطلب (العمود الأول)
+  customerName: string; // اسم العميل (العمود الثاني)
+  productType: string; // نوع المنتج (العمود الثالث)
+  reservationDate: string; // تاريخ الحجز (العمود الرابع)
+  complaintType: string; // نوع الشكوى (العمود الخامس)
+  technicianType: string; // نوع الفني (العمود السادس)
+  phoneNumber: string; // رقم الهاتف (العمود السابع)
+  address: string; // العنوان (العمود الثامن)
+  customerName2: string; // اسم العميل (العمود التاسع)
   assignedTechnician?: string;
   sent?: boolean;
 }
@@ -67,16 +68,17 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
           const rows: ExcelRow[] = [];
           for (let i = 1; i < jsonData.length; i++) {
             const rowData = jsonData[i] as any[];
-            if (rowData.length > 1 && rowData[0]) {
+            if (rowData.length > 8 && rowData[0]) {
               const row: ExcelRow = {
-                customerName: rowData[0]?.toString() || '',
-                phone: rowData[1]?.toString() || '',
-                address: rowData[2]?.toString() || '',
-                propertyNumber: rowData[3]?.toString() || '',
-                customerComplaint: rowData[4]?.toString() || '',
-                bookingDate: rowData[5]?.toString() || '',
-                sapNumber: rowData[6]?.toString() || '',
-                acType: rowData[7]?.toString() || '',
+                orderNumber: rowData[0]?.toString() || '', // رقم الطلب
+                customerName: rowData[1]?.toString() || '', // اسم العميل
+                productType: rowData[2]?.toString() || '', // نوع المنتج
+                reservationDate: rowData[3]?.toString() || '', // تاريخ الحجز
+                complaintType: rowData[4]?.toString() || '', // نوع الشكوى
+                technicianType: rowData[5]?.toString() || '', // نوع الفني
+                phoneNumber: rowData[6]?.toString() || '', // رقم الهاتف
+                address: rowData[7]?.toString() || '', // العنوان
+                customerName2: rowData[8]?.toString() || '', // اسم العميل الثاني
                 sent: false
               };
               rows.push(row);
@@ -173,15 +175,15 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
       }
 
       const success = await supabaseDB.addWorkOrder({
-        customerName: order.customerName,
-        phone: order.phone,
+        customerName: order.customerName, // اسم العميل الصحيح
+        phone: order.phoneNumber, // رقم الهاتف الصحيح
         address: order.address,
-        propertyNumber: order.propertyNumber,
-        customerComplaint: order.customerComplaint,
-        bookingDate: order.bookingDate,
+        propertyNumber: order.orderNumber, // رقم الطلب كرقم العقار
+        customerComplaint: order.complaintType,
+        bookingDate: order.reservationDate,
         callCenterNotes: '',
-        sapNumber: order.sapNumber,
-        acType: order.acType,
+        sapNumber: order.orderNumber,
+        acType: order.productType,
         assignedTechnician: order.assignedTechnician,
         status: 'pending',
         createdBy: currentUser.name
@@ -254,14 +256,15 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
             <div className="text-sm text-gray-600">
               <p>قم برفع ملف Excel أو CSV يحتوي على الأعمدة التالية بالترتيب:</p>
               <ol className="list-decimal list-inside mt-2 space-y-1">
-                <li>اسم العميل (مطلوب)</li>
-                <li>الهاتف</li>
-                <li>العنوان (مطلوب)</li>
-                <li>رقم العقار</li>
-                <li>شكوى العميل</li>
+                <li>رقم الطلب</li>
+                <li>اسم العميل</li>
+                <li>نوع المنتج</li>
                 <li>تاريخ الحجز</li>
-                <li>رقم SAP</li>
-                <li>نوع التكييف</li>
+                <li>نوع الشكوى</li>
+                <li>نوع الفني</li>
+                <li>رقم الهاتف</li>
+                <li>العنوان</li>
+                <li>اسم العميل (النسخة الاحتياطية)</li>
               </ol>
             </div>
             
@@ -340,21 +343,21 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
                         
                         <div className="grid md:grid-cols-2 gap-4 text-sm">
                           <div className="space-y-1">
-                            <p><strong>الهاتف:</strong> {order.phone || 'غير محدد'}</p>
+                            <p><strong>رقم الهاتف:</strong> {order.phoneNumber || 'غير محدد'}</p>
                             <p><strong>العنوان:</strong> {order.address}</p>
-                            {order.propertyNumber && <p><strong>رقم العقار:</strong> {order.propertyNumber}</p>}
+                            <p><strong>رقم الطلب:</strong> {order.orderNumber}</p>
                           </div>
                           <div className="space-y-1">
-                            {order.sapNumber && <p><strong>رقم SAP:</strong> {order.sapNumber}</p>}
-                            {order.acType && <p><strong>نوع التكييف:</strong> {order.acType}</p>}
-                            {order.bookingDate && <p><strong>تاريخ الحجز:</strong> {order.bookingDate}</p>}
+                            <p><strong>نوع المنتج:</strong> {order.productType}</p>
+                            <p><strong>تاريخ الحجز:</strong> {order.reservationDate}</p>
+                            <p><strong>نوع الفني:</strong> {order.technicianType}</p>
                           </div>
                         </div>
                         
-                        {order.customerComplaint && (
+                        {order.complaintType && (
                           <div className="mt-2">
-                            <p className="text-sm font-medium">شكوى العميل:</p>
-                            <p className="text-sm bg-gray-100 p-2 rounded">{order.customerComplaint}</p>
+                            <p className="text-sm font-medium">نوع الشكوى:</p>
+                            <p className="text-sm bg-gray-100 p-2 rounded">{order.complaintType}</p>
                           </div>
                         )}
                       </div>
