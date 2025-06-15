@@ -282,7 +282,7 @@ export const supabaseDB = {
   },
 
   // إضافة طلب صيانة جديد
-  async addWorkOrder(workOrder: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> {
+  async addWorkOrder(workOrder: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
     try {
       const { data, error } = await supabase
         .from('work_orders')
@@ -299,19 +299,17 @@ export const supabaseDB = {
           ac_type: workOrder.acType,
           status: workOrder.status,
           created_by: workOrder.createdBy
-        }])
-        .select('id')
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding work order:', error);
-        return null;
+        return false;
       }
 
-      return data?.id || null;
+      return true;
     } catch (error) {
       console.error('Error adding work order:', error);
-      return null;
+      return false;
     }
   },
 

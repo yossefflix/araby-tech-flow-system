@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, Loader2 } from "lucide-react";
 import { supabaseDB } from "@/utils/supabaseDatabase";
 import { authUtils } from "@/utils/authUtils";
+import * as XLSX from 'xlsx';
 
 interface ExcelRow {
   customerName: string;
@@ -27,34 +28,51 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const data = e.target?.result as string;
-          const lines = data.split('\n');
-          const headers = lines[0].split(',').map(h => h.trim());
+          const data = e.target?.result;
+          let workbook: XLSX.WorkBook;
+          
+          if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            workbook = XLSX.read(data, { type: 'array' });
+          } else {
+            // CSV file
+            const textData = e.target?.result as string;
+            workbook = XLSX.read(textData, { type: 'string' });
+          }
+          
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
           
           const rows: ExcelRow[] = [];
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim());
-            if (values.length > 1 && values[0]) {
+          for (let i = 1; i < jsonData.length; i++) {
+            const rowData = jsonData[i] as any[];
+            if (rowData.length > 1 && rowData[0]) {
               const row: ExcelRow = {
-                customerName: values[0] || '',
-                phone: values[1] || '',
-                address: values[2] || '',
-                propertyNumber: values[3] || '',
-                customerComplaint: values[4] || '',
-                bookingDate: values[5] || '',
-                sapNumber: values[6] || '',
-                acType: values[7] || ''
+                customerName: rowData[0]?.toString() || '',
+                phone: rowData[1]?.toString() || '',
+                address: rowData[2]?.toString() || '',
+                propertyNumber: rowData[3]?.toString() || '',
+                customerComplaint: rowData[4]?.toString() || '',
+                bookingDate: rowData[5]?.toString() || '',
+                sapNumber: rowData[6]?.toString() || '',
+                acType: rowData[7]?.toString() || ''
               };
               rows.push(row);
             }
           }
           resolve(rows);
         } catch (error) {
+          console.error('Error parsing file:', error);
           reject(error);
         }
       };
       reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
-      reader.readAsText(file);
+      
+      if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
     });
   };
 
@@ -62,10 +80,10 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast({
         title: "خطأ في نوع الملف",
-        description: "يرجى رفع ملف Excel (.xlsx) أو CSV (.csv)",
+        description: "يرجى رفع ملف Excel (.xlsx, .xls) أو CSV (.csv)",
         variant: "destructive"
       });
       return;
@@ -78,24 +96,16 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
         throw new Error('User not authenticated');
       }
 
-      let rows: ExcelRow[] = [];
-      
-      if (file.name.endsWith('.csv')) {
-        rows = await parseExcelFile(file);
-      } else {
-        toast({
-          title: "تنسيق غير مدعوم",
-          description: "يرجى تحويل الملف إلى CSV أولاً",
-          variant: "destructive"
-        });
-        return;
-      }
+      console.log('Parsing file:', file.name);
+      const rows = await parseExcelFile(file);
+      console.log('Parsed rows:', rows);
 
       let successCount = 0;
       let errorCount = 0;
 
       for (const row of rows) {
         if (row.customerName && row.address) {
+          console.log('Adding work order:', row);
           const success = await supabaseDB.addWorkOrder({
             customerName: row.customerName,
             phone: row.phone,
@@ -112,9 +122,14 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
 
           if (success) {
             successCount++;
+            console.log('Successfully added order for:', row.customerName);
           } else {
             errorCount++;
+            console.log('Failed to add order for:', row.customerName);
           }
+        } else {
+          errorCount++;
+          console.log('Skipping row due to missing required fields:', row);
         }
       }
 
@@ -123,6 +138,7 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
         description: `تم إضافة ${successCount} طلب بنجاح${errorCount > 0 ? ` مع ${errorCount} خطأ` : ''}`,
       });
 
+      console.log(`Upload completed: ${successCount} success, ${errorCount} errors`);
       onUploadSuccess();
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -133,7 +149,6 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
       });
     } finally {
       setUploading(false);
-      // Reset the input
       event.target.value = '';
     }
   };
@@ -149,7 +164,7 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
       <CardContent>
         <div className="space-y-4">
           <div className="text-sm text-gray-600">
-            <p>قم برفع ملف CSV يحتوي على الأعمدة التالية:</p>
+            <p>قم برفع ملف Excel أو CSV يحتوي على الأعمدة التالية:</p>
             <ul className="list-disc list-inside mt-2">
               <li>اسم العميل (مطلوب)</li>
               <li>الهاتف</li>
@@ -165,7 +180,7 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileUpload}
               disabled={uploading}
               className="hidden"
@@ -181,7 +196,7 @@ const ExcelUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => 
                 <p className="text-lg font-medium">
                   {uploading ? 'جاري الرفع...' : 'اختر ملف Excel أو اسحبه هنا'}
                 </p>
-                <p className="text-sm text-gray-500">CSV أو XLSX</p>
+                <p className="text-sm text-gray-500">CSV, XLSX, أو XLS</p>
               </div>
             </label>
           </div>
