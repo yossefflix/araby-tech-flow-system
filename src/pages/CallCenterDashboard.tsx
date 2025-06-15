@@ -80,11 +80,6 @@ const CallCenterDashboard = () => {
     }
   };
 
-  const handleUploadSuccess = () => {
-    setShowUploader(false);
-    loadUserAndOrders();
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-elaraby-gray flex items-center justify-center">
