@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
-import { ClipboardList, User, CheckCircle, Clock, ArrowDown } from "lucide-react";
+import { ClipboardList, User, CheckCircle, Clock, ArrowDown, RefreshCw } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 import { authUtils, CurrentUser } from "@/utils/authUtils";
 
@@ -47,7 +47,7 @@ const TechnicianDashboard = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'in-progress': return 'bg-orange-100 text-orange-800';
+      case 'in_progress': return 'bg-orange-100 text-orange-800';
       case 'completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -56,7 +56,7 @@ const TechnicianDashboard = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending': return 'مُخصص';
-      case 'in-progress': return 'قيد التنفيذ';
+      case 'in_progress': return 'قيد التنفيذ';
       case 'completed': return 'مكتمل';
       default: return status;
     }
@@ -114,6 +114,10 @@ const TechnicianDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={loadUserAndOrders}>
+                <RefreshCw className="h-4 w-4 ml-2" />
+                تحديث
+              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 تسجيل الخروج
               </Button>
@@ -151,7 +155,7 @@ const TechnicianDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">قيد التنفيذ</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {workOrders.filter(o => o.status === 'in-progress').length}
+                    {workOrders.filter(o => o.status === 'in_progress').length}
                   </p>
                 </div>
                 <Clock className="h-8 w-8 text-orange-600" />
@@ -179,7 +183,7 @@ const TechnicianDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5" />
-              مهامي
+              مهامي ({workOrders.length})
             </CardTitle>
             <CardDescription>
               قائمة بجميع المهام المخصصة لك
@@ -191,6 +195,7 @@ const TechnicianDashboard = () => {
                 <div className="text-center text-gray-500 py-8">
                   <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>لا توجد مهام مخصصة لك حالياً</p>
+                  <p className="text-sm text-gray-400 mt-2">سيتم عرض المهام هنا عند تخصيصها لك</p>
                 </div>
               ) : (
                 workOrders.map((order) => (
@@ -240,12 +245,12 @@ const TechnicianDashboard = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => updateOrderStatus(order.id, 'in-progress')}
+                            onClick={() => updateOrderStatus(order.id, 'in_progress')}
                           >
                             بدء العمل
                           </Button>
                         )}
-                        {order.status === 'in-progress' && (
+                        {order.status === 'in_progress' && (
                           <Button 
                             size="sm" 
                             variant="outline"

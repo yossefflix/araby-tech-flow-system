@@ -298,7 +298,7 @@ export const supabaseDB = {
           sap_number: workOrder.sapNumber,
           assigned_technician: workOrder.assignedTechnician,
           ac_type: workOrder.acType,
-          status: workOrder.status,
+          status: workOrder.status || 'pending',
           created_by: workOrder.createdBy
         });
 
@@ -384,13 +384,19 @@ export const supabaseDB = {
   // جلب طلبات الصيانة المخصصة لفني معين
   async getWorkOrdersByTechnician(technicianName: string): Promise<WorkOrder[]> {
     try {
+      console.log('Fetching orders for technician:', technicianName);
       const { data, error } = await supabase
         .from('work_orders')
         .select('*')
         .eq('assigned_technician', technicianName)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching technician work orders:', error);
+        throw error;
+      }
+
+      console.log('Found orders for technician:', data?.length || 0);
 
       return data?.map(item => ({
         id: item.id,
@@ -467,9 +473,14 @@ export const supabaseDB = {
   // تحديث الفني المخصص لطلب الصيانة
   async updateWorkOrderTechnician(id: string, technicianName: string): Promise<boolean> {
     try {
+      console.log('Updating work order technician:', { id, technicianName });
+      
       const { error } = await supabase
         .from('work_orders')
-        .update({ assigned_technician: technicianName })
+        .update({ 
+          assigned_technician: technicianName,
+          status: 'pending'
+        })
         .eq('id', id);
 
       if (error) {
@@ -477,6 +488,7 @@ export const supabaseDB = {
         return false;
       }
 
+      console.log('Successfully updated work order technician');
       return true;
     } catch (error) {
       console.error('Error updating work order technician:', error);
