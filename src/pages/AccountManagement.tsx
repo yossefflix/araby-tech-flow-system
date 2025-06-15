@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { Users, CheckCircle, X, Trash2, ArrowDown } from "lucide-react";
+import { Users, CheckCircle, X, Trash2, ArrowDown, Ban } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 
 interface User {
@@ -218,11 +229,12 @@ const AccountManagement = () => {
       }
 
       console.log('Deleting user:', user);
+      setLoading(true);
 
       // حذف المستخدم من قاعدة البيانات
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('approved_users')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', userId);
 
       if (error) {
@@ -232,10 +244,22 @@ const AccountManagement = () => {
           description: `فشل في حذف المستخدم: ${error.message}`,
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 
-      console.log('User deleted successfully from database');
+      if (count === 0) {
+        console.warn('No user was deleted - user might not exist');
+        toast({
+          title: "خطأ",
+          description: "المستخدم غير موجود أو تم حذفه مسبقاً",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log('User deleted successfully from database. Rows affected:', count);
 
       // تحديث البيانات المحلية فوراً
       setApprovedUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
@@ -246,14 +270,54 @@ const AccountManagement = () => {
         variant: "destructive"
       });
 
-      // إعادة تحميل البيانات للتأكد من التحديث
-      await loadData();
+      setLoading(false);
       
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
         title: "خطأ",
         description: "فشل في حذف المستخدم",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  };
+
+  const handleBlockUser = async (userId: string) => {
+    try {
+      const user = approvedUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      console.log('Blocking user:', user);
+
+      // تغيير الدور إلى "blocked" بدلاً من الحذف
+      const { error } = await supabase
+        .from('approved_users')
+        .update({ role: 'blocked' })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('Error blocking user:', error);
+        toast({
+          title: "خطأ",
+          description: `فشل في حظر المستخدم: ${error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await loadData(); // إعادة تحميل البيانات
+      
+      toast({
+        title: "تم حظر المستخدم",
+        description: `تم حظر ${user.name} ولن يتمكن من الدخول للنظام`,
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حظر المستخدم",
         variant: "destructive"
       });
     }
@@ -287,6 +351,8 @@ const AccountManagement = () => {
   };
 
   const pendingRequests = registrationRequests.filter(req => req.status === 'pending');
+  const activeUsers = approvedUsers.filter(user => user.role !== 'blocked');
+  const blockedUsers = approvedUsers.filter(user => user.role === 'blocked');
 
   return (
     <div className="min-h-screen bg-elaraby-gray">
@@ -315,7 +381,7 @@ const AccountManagement = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -332,10 +398,22 @@ const AccountManagement = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">المستخدمين المقبولين</p>
-                  <p className="text-2xl font-bold text-green-600">{approvedUsers.length}</p>
+                  <p className="text-sm text-gray-600">المستخدمين النشطين</p>
+                  <p className="text-2xl font-bold text-green-600">{activeUsers.length}</p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">المستخدمين المحظورين</p>
+                  <p className="text-2xl font-bold text-red-600">{blockedUsers.length}</p>
+                </div>
+                <Ban className="h-8 w-8 text-red-600" />
               </div>
             </CardContent>
           </Card>
@@ -413,19 +491,19 @@ const AccountManagement = () => {
             </CardContent>
           </Card>
 
-          {/* Approved Users */}
+          {/* Active Users */}
           <Card>
             <CardHeader>
-              <CardTitle>المستخدمين المقبولين</CardTitle>
+              <CardTitle>المستخدمين النشطين</CardTitle>
               <CardDescription>
-                قائمة المستخدمين المقبولين في النظام
+                قائمة المستخدمين النشطين في النظام
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <p className="text-center text-gray-500 py-8">جاري تحميل البيانات...</p>
-              ) : approvedUsers.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">لا يوجد مستخدمين مقبولين حالياً</p>
+              ) : activeUsers.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">لا يوجد مستخدمين نشطين حالياً</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -437,7 +515,7 @@ const AccountManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {approvedUsers.map((user) => (
+                    {activeUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.phone}</TableCell>
@@ -445,14 +523,60 @@ const AccountManagement = () => {
                           <Badge variant="outline">{getRoleText(user.role)}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            حذف
-                          </Button>
+                          <div className="flex gap-2">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                  حظر
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>حظر المستخدم</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    هل أنت متأكد من حظر {user.name}؟ سيتم منعه من الدخول للنظام ولكن سيبقى في قاعدة البيانات.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleBlockUser(user.id)}>
+                                    حظر
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  حذف نهائي
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>حذف المستخدم نهائياً</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    هل أنت متأكد من حذف {user.name} نهائياً؟ هذا الإجراء لا يمكن التراجع عنه وسيتم حذف جميع بيانات المستخدم.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                    حذف نهائي
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -462,6 +586,92 @@ const AccountManagement = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Blocked Users */}
+        {blockedUsers.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>المستخدمين المحظورين</CardTitle>
+              <CardDescription>
+                قائمة المستخدمين المحظورين من النظام
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>الاسم</TableHead>
+                    <TableHead>الهاتف</TableHead>
+                    <TableHead>الحالة</TableHead>
+                    <TableHead>الإجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {blockedUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.phone}</TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">محظور</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              const { error } = await supabase
+                                .from('approved_users')
+                                .update({ role: 'technician' })
+                                .eq('id', user.id);
+                              
+                              if (!error) {
+                                await loadData();
+                                toast({
+                                  title: "تم إلغاء الحظر",
+                                  description: `تم إلغاء حظر ${user.name}`
+                                });
+                              }
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            إلغاء الحظر
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                حذف نهائي
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>حذف المستخدم نهائياً</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  هل أنت متأكد من حذف {user.name} نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                  حذف نهائي
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         {/* All Requests History */}
         <Card className="mt-8">

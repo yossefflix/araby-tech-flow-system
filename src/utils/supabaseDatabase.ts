@@ -246,19 +246,27 @@ export const supabaseDB = {
     }
   },
 
-  // حذف مستخدم - تم إصلاح الخطأ
+  // حذف مستخدم - تم إصلاح المشكلة
   async deleteUser(userId: string): Promise<boolean> {
     try {
       console.log('Attempting to delete user with ID:', userId);
 
       // حذف المستخدم من جدول المستخدمين المعتمدين
-      const { error: approvedError } = await supabase
+      const { error, count } = await supabase
         .from('approved_users')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', userId);
 
-      if (approvedError) {
-        console.error('Error deleting from approved_users:', approvedError);
+      if (error) {
+        console.error('Error deleting from approved_users:', error);
+        return false;
+      }
+
+      console.log('Delete operation completed. Rows affected:', count);
+      
+      // التحقق من أن المستخدم تم حذفه فعلاً
+      if (count === 0) {
+        console.warn('No user was deleted - user might not exist');
         return false;
       }
 
