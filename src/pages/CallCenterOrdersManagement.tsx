@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { ArrowDown, User, FileText, RefreshCw, Settings } from "lucide-react";
+import { ArrowDown, User, FileText, RefreshCw, Settings, ChevronDown, ChevronUp, Calendar, Phone, MapPin, Hash } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 import { supabase } from "@/integrations/supabase/client";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const CallCenterOrdersManagement = () => {
   const { toast } = useToast();
@@ -15,6 +17,7 @@ const CallCenterOrdersManagement = () => {
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
@@ -23,15 +26,24 @@ const CallCenterOrdersManagement = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('Loading data from Supabase...');
       const [ordersData, technicianData] = await Promise.all([
         supabaseDB.getWorkOrders(),
         supabaseDB.getApprovedUsers()
       ]);
 
+      console.log('Orders loaded:', ordersData);
+      console.log('Technicians loaded:', technicianData);
+      
       setOrders(ordersData);
       setTechnicians(technicianData.filter(user => user.role === 'technician'));
     } catch (error) {
       console.error('Error loading data:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحميل البيانات",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -40,7 +52,6 @@ const CallCenterOrdersManagement = () => {
   const handleAssignTechnician = async (orderId: string, technicianName: string) => {
     setUpdating(orderId);
     try {
-      // تحديث الطلب في قاعدة البيانات
       const { error } = await supabase
         .from('work_orders')
         .update({ assigned_technician: technicianName })
@@ -48,7 +59,6 @@ const CallCenterOrdersManagement = () => {
 
       if (error) throw error;
 
-      // تحديث الحالة المحلية
       setOrders(orders.map(order => 
         order.id === orderId 
           ? { ...order, assignedTechnician: technicianName }
@@ -69,6 +79,16 @@ const CallCenterOrdersManagement = () => {
     } finally {
       setUpdating(null);
     }
+  };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    const newExpanded = new Set(expandedOrders);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedOrders(newExpanded);
   };
 
   const getStatusBadge = (status: string) => {
@@ -178,9 +198,9 @@ const CallCenterOrdersManagement = () => {
           {/* Orders List */}
           <Card>
             <CardHeader>
-              <CardTitle>قائمة الطلبات</CardTitle>
+              <CardTitle>قائمة الطلبات ({orders.length})</CardTitle>
               <CardDescription>
-                جميع طلبات الصيانة مع إمكانية تعيين الفنيين
+                جميع طلبات الصيانة مع إمكانية تعيين الفنيين وعرض التفاصيل
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -193,63 +213,133 @@ const CallCenterOrdersManagement = () => {
                   </div>
                 ) : (
                   orders.map((order) => (
-                    <Card key={order.id} className="border-l-4 border-l-blue-500">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-2">
-                              <h3 className="font-medium text-lg">{order.customerName}</h3>
-                              {getStatusBadge(order.status)}
-                            </div>
-                            <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-600">
-                              <div>📱 {order.phone || 'غير محدد'}</div>
-                              <div>📍 {order.address}</div>
-                              {order.propertyNumber && <div>🏠 رقم العقار: {order.propertyNumber}</div>}
-                              {order.sapNumber && <div>📄 SAP: {order.sapNumber}</div>}
-                            </div>
-                            {order.customerComplaint && (
-                              <div className="mt-2 text-sm">
-                                <span className="font-medium">الشكوى: </span>
-                                {order.customerComplaint}
+                    <Collapsible key={order.id}>
+                      <Card className="border-l-4 border-l-blue-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-4 mb-2">
+                                <h3 className="font-medium text-lg">{order.customerName}</h3>
+                                {getStatusBadge(order.status)}
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleOrderExpansion(order.id)}
+                                  >
+                                    {expandedOrders.has(order.id) ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                    عرض التفاصيل
+                                  </Button>
+                                </CollapsibleTrigger>
                               </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            {order.assignedTechnician ? (
-                              <div className="text-center">
-                                <div className="flex items-center gap-2 text-green-600">
-                                  <User className="h-4 w-4" />
-                                  <span className="font-medium">{order.assignedTechnician}</span>
+                              
+                              <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  {order.phone || 'غير محدد'}
                                 </div>
-                                <div className="text-xs text-gray-500">فني مُعين</div>
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4" />
+                                  {order.address}
+                                </div>
                               </div>
-                            ) : (
-                              <div className="min-w-[200px]">
-                                <Select
-                                  onValueChange={(value) => handleAssignTechnician(order.id, value)}
-                                  disabled={updating === order.id}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="اختر الفني" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {technicians.map((technician) => (
-                                      <SelectItem key={technician.id} value={technician.name}>
-                                        <div className="flex items-center gap-2">
-                                          <User className="h-4 w-4" />
-                                          {technician.name} - {technician.phone}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
+
+                              <CollapsibleContent className="mt-4">
+                                <div className="grid md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                                  {order.propertyNumber && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Hash className="h-4 w-4 text-blue-600" />
+                                      <span className="font-medium">رقم العقار:</span>
+                                      <span>{order.propertyNumber}</span>
+                                    </div>
+                                  )}
+                                  {order.sapNumber && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <FileText className="h-4 w-4 text-green-600" />
+                                      <span className="font-medium">رقم SAP:</span>
+                                      <span>{order.sapNumber}</span>
+                                    </div>
+                                  )}
+                                  {order.acType && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Settings className="h-4 w-4 text-purple-600" />
+                                      <span className="font-medium">نوع التكييف:</span>
+                                      <span>{order.acType}</span>
+                                    </div>
+                                  )}
+                                  {order.bookingDate && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Calendar className="h-4 w-4 text-orange-600" />
+                                      <span className="font-medium">تاريخ الحجز:</span>
+                                      <span>{new Date(order.bookingDate).toLocaleDateString('ar-EG')}</span>
+                                    </div>
+                                  )}
+                                  {order.customerComplaint && (
+                                    <div className="col-span-2 text-sm">
+                                      <span className="font-medium">شكوى العميل:</span>
+                                      <p className="mt-1 text-gray-700">{order.customerComplaint}</p>
+                                    </div>
+                                  )}
+                                  {order.callCenterNotes && (
+                                    <div className="col-span-2 text-sm">
+                                      <span className="font-medium">ملاحظات الكول سنتر:</span>
+                                      <p className="mt-1 text-gray-700">{order.callCenterNotes}</p>
+                                    </div>
+                                  )}
+                                  {order.createdBy && (
+                                    <div className="text-sm text-gray-500">
+                                      <span className="font-medium">تم الإنشاء بواسطة:</span>
+                                      <span className="mr-2">{order.createdBy}</span>
+                                    </div>
+                                  )}
+                                  <div className="text-sm text-gray-500">
+                                    <span className="font-medium">تاريخ الإنشاء:</span>
+                                    <span className="mr-2">{new Date(order.createdAt).toLocaleString('ar-EG')}</span>
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                              {order.assignedTechnician ? (
+                                <div className="text-center">
+                                  <div className="flex items-center gap-2 text-green-600">
+                                    <User className="h-4 w-4" />
+                                    <span className="font-medium">{order.assignedTechnician}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-500">فني مُعين</div>
+                                </div>
+                              ) : (
+                                <div className="min-w-[200px]">
+                                  <Select
+                                    onValueChange={(value) => handleAssignTechnician(order.id, value)}
+                                    disabled={updating === order.id}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="اختر الفني" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {technicians.map((technician) => (
+                                        <SelectItem key={technician.id} value={technician.name}>
+                                          <div className="flex items-center gap-2">
+                                            <User className="h-4 w-4" />
+                                            {technician.name} - {technician.phone}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </Collapsible>
                   ))
                 )}
               </div>
