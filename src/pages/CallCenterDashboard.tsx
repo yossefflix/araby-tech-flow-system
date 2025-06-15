@@ -7,13 +7,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plus, FileText, ArrowDown, Headphones, User, Clock, CheckCircle, Upload } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
 import { authUtils, CurrentUser } from "@/utils/authUtils";
-import ExcelUploader from "@/components/ExcelUploader";
+import ExcelFileManager from "@/components/ExcelFileManager";
 
 const CallCenterDashboard = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showUploader, setShowUploader] = useState(false);
+  const [showFileManager, setShowFileManager] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -185,10 +185,10 @@ const CallCenterDashboard = () => {
           </Card>
         </div>
 
-        {/* Excel Uploader Section */}
-        {showUploader && (
+        {/* Excel File Manager Section */}
+        {showFileManager && (
           <div className="mb-8">
-            <ExcelUploader onUploadSuccess={handleUploadSuccess} />
+            <ExcelFileManager />
           </div>
         )}
 
@@ -212,7 +212,7 @@ const CallCenterDashboard = () => {
 
           <Card 
             className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setShowUploader(!showUploader)}
+            onClick={() => setShowFileManager(!showFileManager)}
           >
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 space-x-reverse">
@@ -220,8 +220,8 @@ const CallCenterDashboard = () => {
                   <Upload className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-purple-600">رفع ملف Excel</h3>
-                  <p className="text-gray-600">استيراد طلبات الصيانة من ملف Excel</p>
+                  <h3 className="text-lg font-semibold text-purple-600">إدارة ملفات Excel</h3>
+                  <p className="text-gray-600">رفع وإدارة ملفات Excel في التخزين السحابي</p>
                 </div>
               </div>
             </CardContent>
@@ -286,7 +286,7 @@ const CallCenterDashboard = () => {
                     </Link>
                     <Button 
                       variant="outline" 
-                      onClick={() => setShowUploader(true)}
+                      onClick={() => setShowFileManager(true)}
                       className="border-purple-600 text-purple-600 hover:bg-purple-50"
                     >
                       <Upload className="h-4 w-4 ml-2" />

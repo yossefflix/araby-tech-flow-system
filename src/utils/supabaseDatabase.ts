@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -525,6 +524,34 @@ export const supabaseDB = {
     } catch (error) {
       console.error('Error fetching work reports:', error);
       return [];
+    }
+  },
+
+  // رفع ملف Excel إلى Supabase Storage
+  async uploadExcelFile(file: File): Promise<{ fileName: string; fileUrl: string } | null> {
+    try {
+      const fileName = `excel-uploads/${Date.now()}-${file.name}`;
+      
+      const { data, error } = await supabase.storage
+        .from('work-files')
+        .upload(fileName, file);
+
+      if (error) {
+        console.error('Error uploading Excel file:', error);
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('work-files')
+        .getPublicUrl(data.path);
+
+      return {
+        fileName: data.path,
+        fileUrl: publicUrl
+      };
+    } catch (error) {
+      console.error('Error uploading Excel file:', error);
+      return null;
     }
   }
 };
