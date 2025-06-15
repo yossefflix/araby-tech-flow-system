@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -247,9 +246,11 @@ export const supabaseDB = {
     }
   },
 
-  // حذف مستخدم
+  // حذف مستخدم - تم إصلاح الخطأ
   async deleteUser(userId: string): Promise<boolean> {
     try {
+      console.log('Attempting to delete user with ID:', userId);
+
       // حذف المستخدم من جدول المستخدمين المعتمدين
       const { error: approvedError } = await supabase
         .from('approved_users')
@@ -261,17 +262,7 @@ export const supabaseDB = {
         return false;
       }
 
-      // حذف المستخدم من جدول طلبات التسجيل أيضاً إذا كان موجوداً
-      const { error: requestError } = await supabase
-        .from('registration_requests')
-        .delete()
-        .eq('id', userId);
-
-      // لا نعتبر عدم وجود المستخدم في طلبات التسجيل خطأ
-      if (requestError && !requestError.message.includes('No rows deleted')) {
-        console.error('Error deleting from registration_requests:', requestError);
-      }
-
+      console.log('User deleted successfully from approved_users');
       return true;
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -530,7 +521,7 @@ export const supabaseDB = {
       const { error } = await supabase
         .from('work_reports')
         .insert({
-          order_id: workReport.orderId, // Fixed: use correct column name
+          order_id: workReport.orderId,
           ac_type: workReport.acType,
           equipment_model1: workReport.equipmentModel1,
           equipment_serial1: workReport.equipmentSerial1,
