@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { ArrowDown, User, FileText, RefreshCw, Settings } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
+import { supabase } from "@/integrations/supabase/client";
 
 const CallCenterOrdersManagement = () => {
   const { toast } = useToast();
@@ -41,7 +41,7 @@ const CallCenterOrdersManagement = () => {
     setUpdating(orderId);
     try {
       // تحديث الطلب في قاعدة البيانات
-      const { error } = await supabaseDB.supabase
+      const { error } = await supabase
         .from('work_orders')
         .update({ assigned_technician: technicianName })
         .eq('id', orderId);
