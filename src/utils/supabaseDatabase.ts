@@ -74,6 +74,31 @@ const convertJsonToFileUploadResult = (jsonArray: any): FileUploadResult[] => {
   }));
 };
 
+// Helper function to format dates safely
+const formatDateForSupabase = (dateString?: string): string | null => {
+  if (!dateString || dateString.trim() === '') {
+    return null;
+  }
+  
+  try {
+    // If it's already a valid ISO string, return it
+    if (dateString.includes('T') && dateString.includes('Z')) {
+      return dateString;
+    }
+    
+    // Try to parse and format the date
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    
+    return date.toISOString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return null;
+  }
+};
+
 export const supabaseDB = {
   // إضافة طلب تسجيل جديد
   async addRegistrationRequest(data: RegistrationRequest): Promise<boolean> {
@@ -284,21 +309,23 @@ export const supabaseDB = {
   // إضافة طلب صيانة جديد
   async addWorkOrder(workOrder: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
     try {
+      console.log('Adding work order to database:', workOrder);
+      
       const { error } = await supabase
         .from('work_orders')
         .insert({
           customer_name: workOrder.customerName,
-          phone: workOrder.phone,
+          phone: workOrder.phone || null,
           address: workOrder.address,
-          property_number: workOrder.propertyNumber,
-          customer_complaint: workOrder.customerComplaint,
-          booking_date: workOrder.bookingDate,
-          call_center_notes: workOrder.callCenterNotes,
-          sap_number: workOrder.sapNumber,
-          assigned_technician: workOrder.assignedTechnician,
-          ac_type: workOrder.acType,
+          property_number: workOrder.propertyNumber || null,
+          customer_complaint: workOrder.customerComplaint || null,
+          booking_date: formatDateForSupabase(workOrder.bookingDate),
+          call_center_notes: workOrder.callCenterNotes || null,
+          sap_number: workOrder.sapNumber || null,
+          assigned_technician: workOrder.assignedTechnician || null,
+          ac_type: workOrder.acType || null,
           status: workOrder.status || 'pending',
-          created_by: workOrder.createdBy
+          created_by: workOrder.createdBy || null
         });
 
       if (error) {
@@ -306,6 +333,7 @@ export const supabaseDB = {
         return false;
       }
 
+      console.log('Work order added successfully');
       return true;
     } catch (error) {
       console.error('Error adding work order:', error);
@@ -630,7 +658,7 @@ export const supabaseDB = {
         address: order.address,
         property_number: order.propertyNumber,
         customer_complaint: order.customerComplaint,
-        booking_date: order.bookingDate,
+        booking_date: formatDateForSupabase(order.bookingDate),
         call_center_notes: order.callCenterNotes,
         sap_number: order.sapNumber,
         assigned_technician: order.assignedTechnician,
