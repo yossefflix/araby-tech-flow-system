@@ -1,0 +1,351 @@
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Upload, FileSpreadsheet, Loader2, User, Save, CheckCircle } from "lucide-react";
+import { supabaseDB } from "@/utils/supabaseDatabase";
+import { authUtils } from "@/utils/authUtils";
+import * as XLSX from 'xlsx';
+
+interface ExcelRow {
+  customerName: string;
+  phone?: string;
+  address: string;
+  propertyNumber?: string;
+  customerComplaint?: string;
+  bookingDate?: string;
+  sapNumber?: string;
+  acType?: string;
+  assignedTechnician?: string;
+}
+
+interface Technician {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => void }) => {
+  const [uploading, setUploading] = useState(false);
+  const [parsedData, setParsedData] = useState<ExcelRow[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const loadTechnicians = async () => {
+    try {
+      const users = await supabaseDB.getApprovedUsers();
+      const techList = users.filter(user => user.role === 'technician');
+      setTechnicians(techList);
+    } catch (error) {
+      console.error('Error loading technicians:', error);
+    }
+  };
+
+  const parseExcelFile = (file: File): Promise<ExcelRow[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          let workbook: XLSX.WorkBook;
+          
+          if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            workbook = XLSX.read(data, { type: 'array' });
+          } else {
+            const textData = e.target?.result as string;
+            workbook = XLSX.read(textData, { type: 'string' });
+          }
+          
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          const rows: ExcelRow[] = [];
+          for (let i = 1; i < jsonData.length; i++) {
+            const rowData = jsonData[i] as any[];
+            if (rowData.length > 1 && rowData[0]) {
+              const row: ExcelRow = {
+                customerName: rowData[0]?.toString() || '',
+                phone: rowData[1]?.toString() || '',
+                address: rowData[2]?.toString() || '',
+                propertyNumber: rowData[3]?.toString() || '',
+                customerComplaint: rowData[4]?.toString() || '',
+                bookingDate: rowData[5]?.toString() || '',
+                sapNumber: rowData[6]?.toString() || '',
+                acType: rowData[7]?.toString() || ''
+              };
+              rows.push(row);
+            }
+          }
+          resolve(rows);
+        } catch (error) {
+          console.error('Error parsing file:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
+      
+      if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      toast({
+        title: "خطأ في نوع الملف",
+        description: "يرجى رفع ملف Excel (.xlsx, .xls) أو CSV (.csv)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      console.log('Parsing file:', file.name);
+      const rows = await parseExcelFile(file);
+      console.log('Parsed rows:', rows);
+
+      if (rows.length === 0) {
+        toast({
+          title: "ملف فارغ",
+          description: "لا توجد بيانات في الملف المرفوع",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setParsedData(rows);
+      await loadTechnicians();
+
+      toast({
+        title: "تم تحليل الملف بنجاح",
+        description: `تم استخراج ${rows.length} طلب من الملف. يمكنك الآن تعيين الفنيين`,
+      });
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "خطأ في تحليل الملف",
+        description: "فشل في قراءة وتحليل الملف",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleTechnicianAssignment = (index: number, technicianName: string) => {
+    const updatedData = [...parsedData];
+    updatedData[index].assignedTechnician = technicianName;
+    setParsedData(updatedData);
+  };
+
+  const saveAllOrders = async () => {
+    setSaving(true);
+    try {
+      const currentUser = await authUtils.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of parsedData) {
+        if (row.customerName && row.address) {
+          const success = await supabaseDB.addWorkOrder({
+            customerName: row.customerName,
+            phone: row.phone,
+            address: row.address,
+            propertyNumber: row.propertyNumber,
+            customerComplaint: row.customerComplaint,
+            bookingDate: row.bookingDate,
+            callCenterNotes: '',
+            sapNumber: row.sapNumber,
+            acType: row.acType,
+            assignedTechnician: row.assignedTechnician,
+            status: 'pending',
+            createdBy: currentUser.name
+          });
+
+          if (success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } else {
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: "تم حفظ الطلبات",
+        description: `تم إضافة ${successCount} طلب بنجاح${errorCount > 0 ? ` مع ${errorCount} خطأ` : ''}`,
+      });
+
+      if (successCount > 0) {
+        setParsedData([]);
+        onUploadSuccess();
+      }
+    } catch (error) {
+      console.error('Error saving orders:', error);
+      toast({
+        title: "خطأ في الحفظ",
+        description: "فشل في حفظ الطلبات",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            رفع ملف Excel وتوزيع الطلبات
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              <p>قم برفع ملف Excel أو CSV يحتوي على الأعمدة التالية بالترتيب:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>اسم العميل (مطلوب)</li>
+                <li>الهاتف</li>
+                <li>العنوان (مطلوب)</li>
+                <li>رقم العقار</li>
+                <li>شكوى العميل</li>
+                <li>تاريخ الحجز</li>
+                <li>رقم SAP</li>
+                <li>نوع التكييف</li>
+              </ol>
+            </div>
+            
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+                id="excel-upload"
+              />
+              <label htmlFor="excel-upload" className="cursor-pointer">
+                <div className="flex flex-col items-center gap-2">
+                  {uploading ? (
+                    <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
+                  ) : (
+                    <Upload className="h-12 w-12 text-blue-600" />
+                  )}
+                  <p className="text-lg font-medium">
+                    {uploading ? 'جاري تحليل الملف...' : 'اختر ملف Excel أو اسحبه هنا'}
+                  </p>
+                  <p className="text-sm text-gray-500">CSV, XLSX, أو XLS</p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {parsedData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                توزيع الطلبات على الفنيين ({parsedData.length} طلب)
+              </CardTitle>
+              <Button 
+                onClick={saveAllOrders} 
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                ) : (
+                  <Save className="h-4 w-4 ml-2" />
+                )}
+                حفظ جميع الطلبات
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {parsedData.map((order, index) => (
+                <Card key={index} className="border-r-4 border-r-blue-500">
+                  <CardContent className="p-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-lg text-blue-600">{order.customerName}</h3>
+                        <div className="text-sm space-y-1">
+                          <p><strong>الهاتف:</strong> {order.phone || 'غير محدد'}</p>
+                          <p><strong>العنوان:</strong> {order.address}</p>
+                          {order.propertyNumber && <p><strong>رقم العقار:</strong> {order.propertyNumber}</p>}
+                          {order.sapNumber && <p><strong>رقم SAP:</strong> {order.sapNumber}</p>}
+                          {order.acType && <p><strong>نوع التكييف:</strong> {order.acType}</p>}
+                        </div>
+                        {order.customerComplaint && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium">شكوى العميل:</p>
+                            <p className="text-sm bg-gray-100 p-2 rounded">{order.customerComplaint}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-center">
+                        <div className="w-full max-w-xs">
+                          <label className="block text-sm font-medium mb-2">اختيار الفني:</label>
+                          <Select 
+                            value={order.assignedTechnician || ''} 
+                            onValueChange={(value) => handleTechnicianAssignment(index, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="اختر الفني" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {technicians.map((technician) => (
+                                <SelectItem key={technician.id} value={technician.name}>
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    {technician.name} - {technician.phone}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {order.assignedTechnician && (
+                            <div className="flex items-center gap-1 mt-2 text-green-600 text-sm">
+                              <CheckCircle className="h-4 w-4" />
+                              تم تعيين: {order.assignedTechnician}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default ExcelWorkOrderUploader;
