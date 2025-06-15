@@ -40,8 +40,8 @@ const CallCenterDashboard = () => {
       setCurrentUser(user);
       console.log('Current user:', user);
 
-      // Get all work orders from Supabase
-      const orders = await supabaseDB.getWorkOrders();
+      // Get all work orders from Supabase (including completed for statistics)
+      const orders = await supabaseDB.getAllWorkOrders();
       console.log('Work orders from Supabase:', orders);
       setWorkOrders(orders);
     } catch (error) {
@@ -260,7 +260,7 @@ const CallCenterDashboard = () => {
           </Card>
         </div>
 
-        {/* Recent Work Orders */}
+        {/* Recent Work Orders (excluding completed ones) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -268,15 +268,15 @@ const CallCenterDashboard = () => {
               طلبات الصيانة الحديثة
             </CardTitle>
             <CardDescription>
-              آخر طلبات الصيانة المضافة
+              آخر طلبات الصيانة المضافة (غير المكتملة)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              {workOrders.length === 0 ? (
+              {workOrders.filter(o => o.status !== 'completed').length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>لا توجد طلبات صيانة بعد</p>
+                  <p>لا توجد طلبات صيانة غير مكتملة</p>
                   <div className="flex gap-4 justify-center mt-4">
                     <Link to="/call-center-work-order">
                       <Button className="bg-green-600 hover:bg-green-700">
@@ -295,7 +295,7 @@ const CallCenterDashboard = () => {
                   </div>
                 </div>
               ) : (
-                workOrders.slice(0, 5).map((order) => (
+                workOrders.filter(o => o.status !== 'completed').slice(0, 5).map((order) => (
                   <Card key={order.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">

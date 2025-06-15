@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { ArrowDown, User, FileText, RefreshCw, Settings, ChevronDown, ChevronUp, Calendar, Phone, MapPin, Hash } from "lucide-react";
 import { supabaseDB, WorkOrder } from "@/utils/supabaseDatabase";
-import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const CallCenterOrdersManagement = () => {
@@ -28,7 +26,7 @@ const CallCenterOrdersManagement = () => {
     try {
       console.log('Loading data from Supabase...');
       const [ordersData, technicianData] = await Promise.all([
-        supabaseDB.getWorkOrders(),
+        supabaseDB.getWorkOrders(), // This now excludes completed orders
         supabaseDB.getApprovedUsers()
       ]);
 
@@ -52,23 +50,26 @@ const CallCenterOrdersManagement = () => {
   const handleAssignTechnician = async (orderId: string, technicianName: string) => {
     setUpdating(orderId);
     try {
-      const { error } = await supabase
-        .from('work_orders')
-        .update({ assigned_technician: technicianName })
-        .eq('id', orderId);
+      const success = await supabaseDB.updateWorkOrderTechnician(orderId, technicianName);
 
-      if (error) throw error;
+      if (success) {
+        setOrders(orders.map(order => 
+          order.id === orderId 
+            ? { ...order, assignedTechnician: technicianName }
+            : order
+        ));
 
-      setOrders(orders.map(order => 
-        order.id === orderId 
-          ? { ...order, assignedTechnician: technicianName }
-          : order
-      ));
-
-      toast({
-        title: "تم تعيين الفني",
-        description: `تم تعيين ${technicianName} للطلب بنجاح`,
-      });
+        toast({
+          title: "تم تعيين الفني",
+          description: `تم تعيين ${technicianName} للطلب بنجاح`,
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: "فشل في تعيين الفني",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Error assigning technician:', error);
       toast({
@@ -134,7 +135,7 @@ const CallCenterOrdersManagement = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-blue-600">إدارة الطلبات</h1>
-                <p className="text-gray-600">تعيين الفنيين ومتابعة الطلبات</p>
+                <p className="text-gray-600">تعيين الفنيين ومتابعة الطلبات (غير المكتملة)</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -162,11 +163,11 @@ const CallCenterOrdersManagement = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* Statistics */}
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-blue-600">{orders.length}</div>
-                <div className="text-sm text-gray-600">إجمالي الطلبات</div>
+                <div className="text-sm text-gray-600">الطلبات غير المكتملة</div>
               </CardContent>
             </Card>
             <Card>
@@ -185,22 +186,14 @@ const CallCenterOrdersManagement = () => {
                 <div className="text-sm text-gray-600">قيد التنفيذ</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {orders.filter(o => o.status === 'completed').length}
-                </div>
-                <div className="text-sm text-gray-600">مكتملة</div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Orders List */}
           <Card>
             <CardHeader>
-              <CardTitle>قائمة الطلبات ({orders.length})</CardTitle>
+              <CardTitle>قائمة الطلبات غير المكتملة ({orders.length})</CardTitle>
               <CardDescription>
-                جميع طلبات الصيانة مع إمكانية تعيين الفنيين وعرض التفاصيل
+                جميع طلبات الصيانة غير المكتملة مع إمكانية تعيين الفنيين وعرض التفاصيل
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -208,8 +201,8 @@ const CallCenterOrdersManagement = () => {
                 {orders.length === 0 ? (
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">لا توجد طلبات حالياً</p>
-                    <p className="text-sm text-gray-500">استخدم مزامنة Google Sheets لاستيراد الطلبات</p>
+                    <p className="text-gray-600">لا توجد طلبات غير مكتملة حالياً</p>
+                    <p className="text-sm text-gray-500">جميع الطلبات تم إكمالها أو لا توجد طلبات بعد</p>
                   </div>
                 ) : (
                   orders.map((order) => (

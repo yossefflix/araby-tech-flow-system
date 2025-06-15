@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -313,8 +314,42 @@ export const supabaseDB = {
     }
   },
 
-  // جلب جميع طلبات الصيانة
+  // جلب جميع طلبات الصيانة (فقط غير المكتملة لإدارة الطلبات)
   async getWorkOrders(): Promise<WorkOrder[]> {
+    try {
+      const { data, error } = await supabase
+        .from('work_orders')
+        .select('*')
+        .neq('status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data?.map(item => ({
+        id: item.id,
+        customerName: item.customer_name,
+        phone: item.phone,
+        address: item.address,
+        propertyNumber: item.property_number,
+        customerComplaint: item.customer_complaint,
+        bookingDate: item.booking_date,
+        callCenterNotes: item.call_center_notes || '',
+        sapNumber: item.sap_number,
+        assignedTechnician: item.assigned_technician,
+        acType: item.ac_type,
+        status: item.status,
+        createdAt: item.created_at,
+        createdBy: item.created_by || '',
+        updatedAt: item.updated_at
+      })) || [];
+    } catch (error) {
+      console.error('Error fetching work orders:', error);
+      return [];
+    }
+  },
+
+  // جلب جميع طلبات الصيانة (للإحصائيات في الكول سنتر)
+  async getAllWorkOrders(): Promise<WorkOrder[]> {
     try {
       const { data, error } = await supabase
         .from('work_orders')
@@ -341,7 +376,7 @@ export const supabaseDB = {
         updatedAt: item.updated_at
       })) || [];
     } catch (error) {
-      console.error('Error fetching work orders:', error);
+      console.error('Error fetching all work orders:', error);
       return [];
     }
   },
@@ -425,6 +460,26 @@ export const supabaseDB = {
       return !error;
     } catch (error) {
       console.error('Error updating work order status:', error);
+      return false;
+    }
+  },
+
+  // تحديث الفني المخصص لطلب الصيانة
+  async updateWorkOrderTechnician(id: string, technicianName: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('work_orders')
+        .update({ assigned_technician: technicianName })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating work order technician:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating work order technician:', error);
       return false;
     }
   },
