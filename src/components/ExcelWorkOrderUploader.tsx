@@ -10,15 +10,17 @@ import { authUtils } from "@/utils/authUtils";
 import * as XLSX from 'xlsx';
 
 interface ExcelRow {
-  orderNumber: string; // رقم الطلب (العمود الأول)
-  customerName: string; // اسم العميل (العمود الثاني)
-  productType: string; // نوع المنتج (العمود الثالث)
-  reservationDate: string; // تاريخ الحجز (العمود الرابع)
-  complaintType: string; // نوع الشكوى (العمود الخامس)
-  technicianType: string; // نوع الفني (العمود السادس)
-  phoneNumber: string; // رقم الهاتف (العمود السابع)
-  address: string; // العنوان (العمود الثامن)
-  customerName2: string; // اسم العميل (العمود التاسع)
+  orderName: string; // اسم الطلب (العمود A)
+  customerName: string; // اسم العميل (العمود B)
+  address: string; // العنوان (العمود C)
+  technicianType: string; // اسم الفني (العمود D)
+  phoneNumber: string; // رقم الموبايل (العمود E)
+  relatedPersonPhone: string; // رقم شخص ذو صلة (العمود F)
+  customerComplaint: string; // شكوى العميل (العمود G)
+  reservationDate: string; // تاريخ الحجز (العمود H)
+  callCenterNotes1: string; // ملاحظات الكول سنتر (العمود J)
+  callCenterNotes2: string; // ملاحظات الكول سنتر (العمود K)
+  sapNumber: string; // رقم SAP (العمود M)
   assignedTechnician?: string;
   sent?: boolean;
 }
@@ -68,17 +70,19 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
           const rows: ExcelRow[] = [];
           for (let i = 1; i < jsonData.length; i++) {
             const rowData = jsonData[i] as any[];
-            if (rowData.length > 8 && rowData[0]) {
+            if (rowData.length > 0 && rowData[0]) {
               const row: ExcelRow = {
-                orderNumber: rowData[0]?.toString() || '', // رقم الطلب
-                customerName: rowData[1]?.toString() || '', // اسم العميل
-                productType: rowData[2]?.toString() || '', // نوع المنتج
-                reservationDate: rowData[3]?.toString() || '', // تاريخ الحجز
-                complaintType: rowData[4]?.toString() || '', // نوع الشكوى
-                technicianType: rowData[5]?.toString() || '', // نوع الفني
-                phoneNumber: rowData[6]?.toString() || '', // رقم الهاتف
-                address: rowData[7]?.toString() || '', // العنوان
-                customerName2: rowData[8]?.toString() || '', // اسم العميل الثاني
+                orderName: rowData[0]?.toString() || '', // العمود A - اسم الطلب
+                customerName: rowData[1]?.toString() || '', // العمود B - اسم العميل
+                address: rowData[2]?.toString() || '', // العمود C - العنوان
+                technicianType: rowData[3]?.toString() || '', // العمود D - اسم الفني
+                phoneNumber: rowData[4]?.toString() || '', // العمود E - رقم الموبايل
+                relatedPersonPhone: rowData[5]?.toString() || '', // العمود F - رقم شخص ذو صلة
+                customerComplaint: rowData[6]?.toString() || '', // العمود G - شكوى العميل
+                reservationDate: rowData[7]?.toString() || '', // العمود H - تاريخ الحجز
+                callCenterNotes1: rowData[9]?.toString() || '', // العمود J - ملاحظات الكول سنتر 1
+                callCenterNotes2: rowData[10]?.toString() || '', // العمود K - ملاحظات الكول سنتر 2
+                sapNumber: rowData[12]?.toString() || '', // العمود M - رقم SAP
                 sent: false
               };
               rows.push(row);
@@ -174,16 +178,21 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
         throw new Error('User not authenticated');
       }
 
+      // تجميع ملاحظات الكول سنتر
+      const combinedNotes = [order.callCenterNotes1, order.callCenterNotes2]
+        .filter(note => note && note.trim())
+        .join(' - ');
+
       const success = await supabaseDB.addWorkOrder({
-        customerName: order.customerName, // اسم العميل الصحيح
-        phone: order.phoneNumber, // رقم الهاتف الصحيح
+        customerName: order.customerName,
+        phone: order.phoneNumber,
         address: order.address,
-        propertyNumber: order.orderNumber, // رقم الطلب كرقم العقار
-        customerComplaint: order.complaintType,
+        propertyNumber: order.orderName,
+        customerComplaint: order.customerComplaint,
         bookingDate: order.reservationDate,
-        callCenterNotes: '',
-        sapNumber: order.orderNumber,
-        acType: order.productType,
+        callCenterNotes: combinedNotes,
+        sapNumber: order.sapNumber,
+        acType: order.technicianType,
         assignedTechnician: order.assignedTechnician,
         status: 'pending',
         createdBy: currentUser.name
@@ -256,15 +265,17 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
             <div className="text-sm text-gray-600">
               <p>قم برفع ملف Excel أو CSV يحتوي على الأعمدة التالية بالترتيب:</p>
               <ol className="list-decimal list-inside mt-2 space-y-1">
-                <li>رقم الطلب</li>
-                <li>اسم العميل</li>
-                <li>نوع المنتج</li>
-                <li>تاريخ الحجز</li>
-                <li>نوع الشكوى</li>
-                <li>نوع الفني</li>
-                <li>رقم الهاتف</li>
-                <li>العنوان</li>
-                <li>اسم العميل (النسخة الاحتياطية)</li>
+                <li>اسم الطلب (العمود A)</li>
+                <li>اسم العميل (العمود B)</li>
+                <li>العنوان (العمود C)</li>
+                <li>اسم الفني (العمود D)</li>
+                <li>رقم الموبايل (العمود E)</li>
+                <li>رقم شخص ذو صلة (العمود F)</li>
+                <li>شكوى العميل (العمود G)</li>
+                <li>تاريخ الحجز (العمود H)</li>
+                <li>ملاحظات الكول سنتر (العمود J)</li>
+                <li>ملاحظات الكول سنتر (العمود K)</li>
+                <li>رقم SAP (العمود M)</li>
               </ol>
             </div>
             
@@ -343,21 +354,32 @@ const ExcelWorkOrderUploader = ({ onUploadSuccess }: { onUploadSuccess: () => vo
                         
                         <div className="grid md:grid-cols-2 gap-4 text-sm">
                           <div className="space-y-1">
-                            <p><strong>رقم الهاتف:</strong> {order.phoneNumber || 'غير محدد'}</p>
+                            <p><strong>اسم الطلب:</strong> {order.orderName}</p>
+                            <p><strong>رقم الهاتف:</strong> {order.phoneNumber}</p>
+                            <p><strong>رقم شخص ذو صلة:</strong> {order.relatedPersonPhone}</p>
                             <p><strong>العنوان:</strong> {order.address}</p>
-                            <p><strong>رقم الطلب:</strong> {order.orderNumber}</p>
                           </div>
                           <div className="space-y-1">
-                            <p><strong>نوع المنتج:</strong> {order.productType}</p>
-                            <p><strong>تاريخ الحجز:</strong> {order.reservationDate}</p>
                             <p><strong>نوع الفني:</strong> {order.technicianType}</p>
+                            <p><strong>تاريخ الحجز:</strong> {order.reservationDate}</p>
+                            <p><strong>رقم SAP:</strong> {order.sapNumber}</p>
                           </div>
                         </div>
                         
-                        {order.complaintType && (
+                        {order.customerComplaint && (
                           <div className="mt-2">
-                            <p className="text-sm font-medium">نوع الشكوى:</p>
-                            <p className="text-sm bg-gray-100 p-2 rounded">{order.complaintType}</p>
+                            <p className="text-sm font-medium">شكوى العميل:</p>
+                            <p className="text-sm bg-gray-100 p-2 rounded">{order.customerComplaint}</p>
+                          </div>
+                        )}
+
+                        {(order.callCenterNotes1 || order.callCenterNotes2) && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium">ملاحظات الكول سنتر:</p>
+                            <div className="text-sm bg-gray-100 p-2 rounded space-y-1">
+                              {order.callCenterNotes1 && <p>• {order.callCenterNotes1}</p>}
+                              {order.callCenterNotes2 && <p>• {order.callCenterNotes2}</p>}
+                            </div>
                           </div>
                         )}
                       </div>
