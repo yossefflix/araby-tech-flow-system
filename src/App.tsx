@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminWorkOrders from "./pages/AdminWorkOrders";
+import AdminWorkReports from "./pages/AdminWorkReports";
 import TechnicianLogin from "./pages/TechnicianLogin";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import WorkOrderForm from "./pages/WorkOrderForm";
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/call-center-login" element={<CallCenterLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/account-management" element={<AccountManagement />} />
+          <Route path="/admin-work-orders" element={<AdminWorkOrders />} />
+          <Route path="/admin-work-reports" element={<AdminWorkReports />} />
           <Route path="/call-center-work-order" element={<CallCenterWorkOrder />} />
           <Route path="/call-center-orders-management" element={<CallCenterOrdersManagement />} />
           <Route path="/technician-login" element={<TechnicianLogin />} />

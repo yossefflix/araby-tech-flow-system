@@ -124,6 +124,38 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/admin-work-orders">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  <div className="bg-yellow-100 p-3 rounded-lg">
+                    <Shield className="h-8 w-8 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-yellow-600">طلبات الصيانة</h3>
+                    <p className="text-gray-600">عرض وإدارة جميع طلبات الصيانة</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/admin-work-reports">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 space-x-reverse">
+                  <div className="bg-green-100 p-3 rounded-lg">
+                    <Shield className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-600">تقارير العمل</h3>
+                    <p className="text-gray-600">عرض التقارير المكتملة من الفنيين</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>
