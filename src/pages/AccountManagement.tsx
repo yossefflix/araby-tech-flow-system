@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,6 +106,8 @@ const AccountManagement = () => {
       const user = registrationRequests.find(req => req.id === requestId);
       if (!user) return;
 
+      console.log('Approving user:', user);
+
       // Add user to approved_users table
       const { error: insertError } = await supabase
         .from('approved_users')
@@ -166,6 +167,8 @@ const AccountManagement = () => {
     try {
       const user = registrationRequests.find(req => req.id === requestId);
       
+      console.log('Rejecting user request:', user);
+
       const { error } = await supabase
         .from('registration_requests')
         .update({ 
@@ -204,29 +207,48 @@ const AccountManagement = () => {
   const handleDeleteUser = async (userId: string) => {
     try {
       const user = approvedUsers.find(u => u.id === userId);
-      
+      if (!user) {
+        console.error('User not found with ID:', userId);
+        toast({
+          title: "خطأ",
+          description: "المستخدم غير موجود",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('Deleting user:', user);
+
+      // حذف المستخدم من قاعدة البيانات
       const { error } = await supabase
         .from('approved_users')
         .delete()
         .eq('id', userId);
 
       if (error) {
-        console.error('Error deleting user:', error);
+        console.error('Error deleting user from database:', error);
         toast({
           title: "خطأ",
-          description: "فشل في حذف المستخدم",
+          description: `فشل في حذف المستخدم: ${error.message}`,
           variant: "destructive"
         });
         return;
       }
 
-      await loadData(); // Refresh data
+      console.log('User deleted successfully from database');
+
+      // تحديث البيانات المحلية فوراً
+      setApprovedUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
       
       toast({
         title: "تم حذف المستخدم",
-        description: `تم حذف ${user?.name} من النظام`,
+        description: `تم حذف ${user.name} من النظام بنجاح`,
         variant: "destructive"
       });
+
+      // إعادة تحميل البيانات للتأكد من التحديث
+      await loadData();
+      
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
