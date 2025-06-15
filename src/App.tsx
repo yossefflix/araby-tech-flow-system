@@ -17,6 +17,7 @@ import CallCenterRegister from "./pages/CallCenterRegister";
 import CallCenterLogin from "./pages/CallCenterLogin";
 import AccountManagement from "./pages/AccountManagement";
 import WorkReports from "./pages/WorkReports";
+import CallCenterOrdersManagement from "./pages/CallCenterOrdersManagement";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/account-management" element={<AccountManagement />} />
           <Route path="/call-center-work-order" element={<CallCenterWorkOrder />} />
+          <Route path="/call-center-orders-management" element={<CallCenterOrdersManagement />} />
           <Route path="/technician-login" element={<TechnicianLogin />} />
           <Route path="/technician" element={<TechnicianDashboard />} />
           <Route path="/work-order/:id" element={<WorkOrderForm />} />
