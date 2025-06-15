@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -420,7 +419,7 @@ export const supabaseDB = {
     try {
       const { error } = await supabase
         .from('work_reports')
-        .insert([{
+        .insert({
           order_id: workReport.orderId,
           ac_type: workReport.acType,
           equipment_model1: workReport.equipmentModel1,
@@ -435,7 +434,7 @@ export const supabaseDB = {
           photos: workReport.photos,
           videos: workReport.videos,
           technician_name: workReport.technicianName
-        }]);
+        });
 
       return !error;
     } catch (error) {
